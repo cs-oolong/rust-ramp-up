@@ -30,13 +30,11 @@ In a pear tree
             acc.push_str("\n");
             acc.push_str(items[idx]);
             acc.push_str("\n");
-            println!("{}", format!("{begin}{acc}{end}\n"));
         }
         else if day == "eleventh" {
             let mut acc_copy = String::from(acc.clone());
             acc_copy.push_str("I sent eleven\nPipers piping");
             acc_copy.push_str("\n");
-            println!("{}", format!("{begin}{acc_copy}{end}\n"));
         }
         else {
             acc.push_str(items[idx]);
