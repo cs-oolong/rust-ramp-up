@@ -1,81 +1,146 @@
+// To run this code, you will need the 'crossterm' dependency.
+// Add the following to your Cargo.toml file:
+// [dependencies]
+// crossterm = "0.27"
+
 use crossterm::{
-    event::{self, Event, KeyCode, KeyModifiers},
-    terminal::{self, disable_raw_mode, enable_raw_mode},
+    cursor::{self, MoveTo},
+    event::{self, Event, KeyCode, KeyEventKind},
+    style::Print,
+    terminal::{self, enable_raw_mode, disable_raw_mode, Clear, ClearType},
+    execute,
 };
+use std::{io::{self, Write}, time::Duration};
 
-fn read_arrow() -> Option<KeyCode> {
-    if let Ok(Event::Key(key)) = event::read() {
+// --- Game Constants ---
+const MAP_WIDTH: u16 = 40;
+const MAP_HEIGHT: u16 = 20;
 
-        if key.modifiers.contains(KeyModifiers::CONTROL)
-            && matches!(key.code, KeyCode::Char('c'))
-        {
-            disable_raw_mode().unwrap();
-            std::process::exit(0);
-        }
-
-        match key.code {
-            KeyCode::Up    => return Some(KeyCode::Up),
-            KeyCode::Down  => return Some(KeyCode::Down),
-            KeyCode::Left  => return Some(KeyCode::Left),
-            KeyCode::Right => return Some(KeyCode::Right),
-            _ => {}
-        }
-    }
-    None
+// --- Game State Structure ---
+struct Player {
+    x: u16,
+    y: u16,
 }
 
-fn main() {
-    let mut player_w = 10;
-    let mut player_h = 5;
-    let map_height = 10;
-    let map_width = 20;
+// --- Core Game Functions ---
 
-    print_basic_map(map_width, map_height, player_w, player_h);
-
-    enable_raw_mode().unwrap();
-
-    loop {
-        if let Some(code) = read_arrow() {
-            match code {
-                KeyCode::Up    => player_h -= 1,
-                KeyCode::Down  => player_h += 1,
-                KeyCode::Left  => player_w -= 1, 
-                KeyCode::Right => player_w += 1,
-                _ => unreachable!(),
-            }
-        }
-        disable_raw_mode().unwrap();
-        print_basic_map(map_width, map_height, player_w, player_h);
-        enable_raw_mode().unwrap();
-    }
-    disable_raw_mode().unwrap();
+/// Initializes the terminal, enabling raw mode for immediate keypress handling.
+fn setup_terminal() -> io::Result<()> {
+    // Enable raw mode, which lets us read keys without waiting for Enter
+    // and prevents input from being echoed to the screen.
+    enable_raw_mode()?;
+    
+    // Hide the terminal cursor and clear the screen
+    execute!(io::stdout(), cursor::Hide, Clear(ClearType::All))?;
+    Ok(())
 }
 
-fn print_basic_map(map_width: u32, map_height: u32, player_x: u32, player_y: u32) {
-    let mut map = String::from("");
+/// Restores the terminal to its normal state.
+fn cleanup_terminal() -> io::Result<()> {
+    // Show the cursor
+    execute!(io::stdout(), cursor::Show)?;
+    
+    // Restore the terminal mode
+    disable_raw_mode()?;
+    Ok(())
+}
 
-    for column in 0..map_width {
-        map.push_str(". "); // (x, 10)
-    }
-    map.push_str("\n");
+/// Clears the screen and draws the game state.
+fn draw_game(player: &Player, stdout: &mut io::Stdout) -> io::Result<()> {
+    // 1. Clear the entire screen
+    execute!(stdout, Clear(ClearType::All), MoveTo(0, 0))?;
 
-    for row in 0..map_height {
-        map.push_str("."); // leftmost wall piece
-        for column in 1..=map_width-2 {
-            if row == player_y && column == player_x {
-                map.push_str("@ ");
-                continue;
+    // 2. Draw the border
+    for x in 0..MAP_WIDTH {
+        for y in 0..MAP_HEIGHT {
+            // Check if we are on an edge row or column
+            let is_border = x == 0 || x == MAP_WIDTH - 1 || y == 0 || y == MAP_HEIGHT - 1;
+
+            if is_border {
+                // Move cursor to position (x, y) and print a dot
+                execute!(stdout, MoveTo(x, y), Print("."))?;
             }
-            map.push_str("  "); // blank parts
         }
-        map.push_str(" ."); // rightmost wall piece
-        map.push_str("\n");
     }
 
-    for column in 0..map_width {
-        map.push_str(". "); // (x, 0)
-    }
-    map.push_str("\n");
+    // 3. Draw the player
+    // Move cursor to player position and print the player character
+    execute!(stdout, MoveTo(player.x, player.y), Print("@"))?;
 
-    println!("{}", map);
+    // Flush the buffer to ensure everything is drawn immediately
+    stdout.flush()?;
+    Ok(())
+}
+
+/// Handles player movement based on the key pressed.
+fn handle_input(player: &mut Player) -> io::Result<bool> {
+    // Check if an event is available without blocking for 100 milliseconds
+    if event::poll(Duration::from_millis(100))? {
+        let event = event::read()?;
+        
+        // We only care about key presses (when the key is pressed down)
+        if let Event::Key(key_event) = event {
+            if key_event.kind == KeyEventKind::Press {
+                match key_event.code {
+                    // Exit the game on 'q' or ESC
+                    KeyCode::Char('q') | KeyCode::Esc => return Ok(false), 
+
+                    // Movement: saturating_sub ensures we don't wrap around below 0
+                    KeyCode::Up => player.y = player.y.saturating_sub(1),
+                    KeyCode::Down => player.y += 1,
+                    KeyCode::Left => player.x = player.x.saturating_sub(1),
+                    KeyCode::Right => player.x += 1,
+
+                    _ => {} // Ignore other keys
+                }
+
+                // Clamp player position to boundary (1 to MAP_WIDTH/HEIGHT - 2)
+                // This prevents the player from moving onto the border lines (0 and MAX-1)
+                player.x = player.x.clamp(1, MAP_WIDTH - 2);
+                player.y = player.y.clamp(1, MAP_HEIGHT - 2);
+            }
+        }
+    }
+    Ok(true) // Continue the loop
+}
+
+
+// --- Main Execution ---
+
+fn main() -> io::Result<()> {
+    // Initialize standard output handle
+    let mut stdout = io::stdout();
+    
+    // Initial player position (center of the map, accounting for borders)
+    let mut player = Player {
+        x: MAP_WIDTH / 2,
+        y: MAP_HEIGHT / 2,
+    };
+    
+    // 1. Set up the terminal environment
+    setup_terminal()?;
+
+    // 2. Main Game Loop
+    let mut running = true;
+    while running {
+        // A. Draw the current game state
+        draw_game(&player, &mut stdout)?;
+
+        // B. Handle user input
+        match handle_input(&mut player) {
+            Ok(keep_running) => running = keep_running,
+            Err(e) => {
+                // Handle potential I/O errors and exit gracefully
+                eprintln!("An error occurred: {}", e);
+                break;
+            }
+        }
+    }
+
+    // 3. Cleanup terminal before exiting
+    cleanup_terminal()?;
+
+    // Final message printed after cleanup
+    println!("Game Over! Thanks for playing.");
+    Ok(())
 }
