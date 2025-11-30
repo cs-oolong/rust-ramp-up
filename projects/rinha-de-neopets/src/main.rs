@@ -133,4 +133,285 @@ mod tests {
         
         assert_eq!(original_value, roundtrip_value);
     }
+
+    #[test]
+    fn test_behavior_valid_exactly_one() {
+        let def = BehaviorDef {
+            attack_chance: 0.5,
+            spell_chances: vec![0.1, 0.15],
+            heal_chance: 0.25,
+        };
+        let result = Behavior::try_from(def);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_behavior_valid_close_to_one() {
+        let def = BehaviorDef {
+            attack_chance: 0.5 + 1e-17,
+            spell_chances: vec![0.1, 0.15],
+            heal_chance: 0.25,
+        };
+        let result = Behavior::try_from(def);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_behavior_valid_zero_spells() {
+        let def = BehaviorDef {
+            attack_chance: 0.5,
+            spell_chances: vec![],
+            heal_chance: 0.5,
+        };
+        let result = Behavior::try_from(def);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_behavior_invalid_sum_too_low() {
+        let def = BehaviorDef {
+            attack_chance: 0.5,
+            spell_chances: vec![0.1, 0.15],
+            heal_chance: 0.1,
+        };
+        let result = Behavior::try_from(def);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_behavior_invalid_sum_too_high() {
+        let def = BehaviorDef {
+            attack_chance: 0.5,
+            spell_chances: vec![0.1, 0.15],
+            heal_chance: 0.4,
+        };
+        let result = Behavior::try_from(def);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_behavior_invalid_sum_way_off() {
+        let def = BehaviorDef {
+            attack_chance: 1.5,
+            spell_chances: vec![0.5, 0.5],
+            heal_chance: 0.5,
+        };
+        let result = Behavior::try_from(def);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_behavior_error_message_content() {
+        let def = BehaviorDef {
+            attack_chance: 0.5,
+            spell_chances: vec![0.1, 0.15],
+            heal_chance: 0.1,
+        };
+        let result = Behavior::try_from(def);
+        let error_msg = result.unwrap_err();
+        assert!(error_msg.contains("sum to"));
+        assert!(error_msg.contains("attack"));
+        assert!(error_msg.contains("heal"));
+        assert!(error_msg.contains("spells"));
+    }
+
+    #[test]
+    fn test_neopet_valid_two_spells_two_chances() {
+        let def = NeopetDef {
+            name: "TestPet".to_string(),
+            health: 100,
+            heal_delta: 10,
+            base_attack: 5,
+            base_defense: 3,
+            spells: vec![
+                Spell { name: "Spell1".to_string(), effect: serde_json::Value::Object(serde_json::Map::new()) },
+                Spell { name: "Spell2".to_string(), effect: serde_json::Value::Object(serde_json::Map::new()) },
+            ],
+            behavior: BehaviorDef {
+                attack_chance: 0.5,
+                spell_chances: vec![0.1, 0.15],
+                heal_chance: 0.25,
+            },
+        };
+        let result = Neopet::try_from(def);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_neopet_valid_zero_spells_zero_chances() {
+        let def = NeopetDef {
+            name: "TestPet".to_string(),
+            health: 100,
+            heal_delta: 10,
+            base_attack: 5,
+            base_defense: 3,
+            spells: vec![],
+            behavior: BehaviorDef {
+                attack_chance: 0.5,
+                spell_chances: vec![],
+                heal_chance: 0.5,
+            },
+        };
+        let result = Neopet::try_from(def);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_neopet_invalid_more_spells_than_chances() {
+        let def = NeopetDef {
+            name: "TestPet".to_string(),
+            health: 100,
+            heal_delta: 10,
+            base_attack: 5,
+            base_defense: 3,
+            spells: vec![
+                Spell { name: "Spell1".to_string(), effect: serde_json::Value::Object(serde_json::Map::new()) },
+                Spell { name: "Spell2".to_string(), effect: serde_json::Value::Object(serde_json::Map::new()) },
+            ],
+            behavior: BehaviorDef {
+                attack_chance: 0.5,
+                spell_chances: vec![0.1],
+                heal_chance: 0.25,
+            },
+        };
+        let result = Neopet::try_from(def);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_neopet_invalid_more_chances_than_spells() {
+        let def = NeopetDef {
+            name: "TestPet".to_string(),
+            health: 100,
+            heal_delta: 10,
+            base_attack: 5,
+            base_defense: 3,
+            spells: vec![
+                Spell { name: "Spell1".to_string(), effect: serde_json::Value::Object(serde_json::Map::new()) },
+            ],
+            behavior: BehaviorDef {
+                attack_chance: 0.5,
+                spell_chances: vec![0.1, 0.15],
+                heal_chance: 0.25,
+            },
+        };
+        let result = Neopet::try_from(def);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_neopet_invalid_spell_count_mismatch_error_message() {
+        let def = NeopetDef {
+            name: "TestPet".to_string(),
+            health: 100,
+            heal_delta: 10,
+            base_attack: 5,
+            base_defense: 3,
+            spells: vec![
+                Spell { name: "Spell1".to_string(), effect: serde_json::Value::Object(serde_json::Map::new()) },
+                Spell { name: "Spell2".to_string(), effect: serde_json::Value::Object(serde_json::Map::new()) },
+            ],
+            behavior: BehaviorDef {
+                attack_chance: 0.5,
+                spell_chances: vec![0.1],
+                heal_chance: 0.25,
+            },
+        };
+        let result = Neopet::try_from(def);
+        let error_msg = result.unwrap_err();
+        assert!(error_msg.contains("TestPet"));
+        assert!(error_msg.contains("spell chances"));
+        assert!(error_msg.contains("spells"));
+    }
+
+    #[test]
+    fn test_neopet_invalid_behavior_sum_propagates() {
+        let def = NeopetDef {
+            name: "TestPet".to_string(),
+            health: 100,
+            heal_delta: 10,
+            base_attack: 5,
+            base_defense: 3,
+            spells: vec![
+                Spell { name: "Spell1".to_string(), effect: serde_json::Value::Object(serde_json::Map::new()) },
+                Spell { name: "Spell2".to_string(), effect: serde_json::Value::Object(serde_json::Map::new()) },
+            ],
+            behavior: BehaviorDef {
+                attack_chance: 0.5,
+                spell_chances: vec![0.1, 0.15],
+                heal_chance: 0.1,
+            },
+        };
+        let result = Neopet::try_from(def);
+        assert!(result.is_err());
+        let error_msg = result.unwrap_err();
+        assert!(error_msg.contains("sum"));
+    }
+
+    #[test]
+    #[should_panic(expected = "Failed to validate neopet")]
+    fn test_load_neopets_with_invalid_behavior_sum() {
+        let json = r#"
+        [
+            {
+                "name": "InvalidPet",
+                "health": 100,
+                "heal_delta": 10,
+                "base_attack": 5,
+                "base_defense": 3,
+                "spells": [
+                    {"name": "Spell1", "effect": {}},
+                    {"name": "Spell2", "effect": {}}
+                ],
+                "behavior": {
+                    "attack_chance": 0.5,
+                    "spell_chances": [0.1, 0.15],
+                    "heal_chance": 0.1
+                }
+            }
+        ]
+        "#;
+        let temp_file = NamedTempFile::new().expect("Failed to create temp file");
+        std::fs::write(temp_file.path(), json).expect("Failed to write to temp file");
+        let _neopets = load_neopets(temp_file.path().to_str().unwrap());
+    }
+
+    #[test]
+    #[should_panic(expected = "spell chances but")]
+    fn test_load_neopets_with_spell_count_mismatch() {
+        let json = r#"
+        [
+            {
+                "name": "InvalidPet",
+                "health": 100,
+                "heal_delta": 10,
+                "base_attack": 5,
+                "base_defense": 3,
+                "spells": [
+                    {"name": "Spell1", "effect": {}},
+                    {"name": "Spell2", "effect": {}}
+                ],
+                "behavior": {
+                    "attack_chance": 0.5,
+                    "spell_chances": [0.1],
+                    "heal_chance": 0.4
+                }
+            }
+        ]
+        "#;
+        let temp_file = NamedTempFile::new().expect("Failed to create temp file");
+        std::fs::write(temp_file.path(), json).expect("Failed to write to temp file");
+        let _neopets = load_neopets(temp_file.path().to_str().unwrap());
+    }
+
+    #[test]
+    fn test_load_neopets_all_validation_passes() {
+        let neopets = load_neopets("assets/neopets.json");
+        assert_eq!(neopets.len(), 3);
+        for neopet in neopets {
+            assert_eq!(neopet.behavior.spell_chances.len(), neopet.spells.len());
+            let total = neopet.behavior.attack_chance + neopet.behavior.heal_chance + neopet.behavior.spell_chances.iter().sum::<f64>();
+            assert!((total - 1.0).abs() <= f64::EPSILON);
+        }
+    }
 }
