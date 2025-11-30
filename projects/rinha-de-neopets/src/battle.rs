@@ -1,5 +1,5 @@
-use rand::Rng;
 use crate::neopets::Neopet;
+use rand::Rng;
 
 fn roll_d20() -> u8 {
     rand::rng().random_range(1..=20)
@@ -13,7 +13,7 @@ enum Action {
 }
 
 fn choose_action<R: Rng>(neopet: &Neopet, rng: &mut R) -> Action {
-    let roll : f64 = rng.random();
+    let roll: f64 = rng.random();
     if roll < neopet.behavior.attack_chance {
         Action::Attack
     } else if roll < neopet.behavior.attack_chance + neopet.behavior.heal_chance {

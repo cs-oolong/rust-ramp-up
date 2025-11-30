@@ -32,12 +32,15 @@ pub struct Behavior {
 
 impl TryFrom<BehaviorDef> for Behavior {
     type Error = String;
-    
+
     fn try_from(def: BehaviorDef) -> Result<Self, Self::Error> {
         let total = def.attack_chance + def.heal_chance + def.spell_chances.iter().sum::<f64>();
-        
+
         if (total - 1.0).abs() > f64::EPSILON {
-            Err(format!("Behavior probabilities sum to {} but must equal 1.0 (attack: {}, heal: {}, spells: {:?})", total, def.attack_chance, def.heal_chance, def.spell_chances))
+            Err(format!(
+                "Behavior probabilities sum to {} but must equal 1.0 (attack: {}, heal: {}, spells: {:?})",
+                total, def.attack_chance, def.heal_chance, def.spell_chances
+            ))
         } else {
             Ok(Behavior {
                 attack_chance: def.attack_chance,
@@ -54,7 +57,10 @@ impl fmt::Display for Behavior {
             f,
             "⚔️ {:.0}% | 🪄 {:?} | 💚 {:.0}%",
             self.attack_chance * 100.0,
-            self.spell_chances.iter().map(|c| format!("{:.0}%", c * 100.0)).collect::<Vec<_>>(),
+            self.spell_chances
+                .iter()
+                .map(|c| format!("{:.0}%", c * 100.0))
+                .collect::<Vec<_>>(),
             self.heal_chance * 100.0
         )
     }
@@ -85,14 +91,19 @@ pub struct Neopet {
 
 impl TryFrom<NeopetDef> for Neopet {
     type Error = String;
-    
+
     fn try_from(def: NeopetDef) -> Result<Self, Self::Error> {
         if def.behavior.spell_chances.len() != def.spells.len() {
-            return Err(format!("Neopet {}: {} spell chances but {} spells", def.name, def.behavior.spell_chances.len(), def.spells.len()));
+            return Err(format!(
+                "Neopet {}: {} spell chances but {} spells",
+                def.name,
+                def.behavior.spell_chances.len(),
+                def.spells.len()
+            ));
         }
-        
+
         let behavior = Behavior::try_from(def.behavior)?;
-        
+
         Ok(Neopet {
             name: def.name,
             health: def.health,
@@ -107,7 +118,9 @@ impl TryFrom<NeopetDef> for Neopet {
 
 impl fmt::Display for Neopet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let spell_list = self.spells.iter()
+        let spell_list = self
+            .spells
+            .iter()
             .map(|s| s.to_string())
             .collect::<Vec<_>>()
             .join(", ");
@@ -129,7 +142,8 @@ impl fmt::Display for Neopet {
 pub fn load_neopets(path: &str) -> Vec<Neopet> {
     let file = File::open(path).expect("Failed to open file");
     let neopets_def: Vec<NeopetDef> = serde_json::from_reader(file).expect("Failed to deserialize");
-    neopets_def.into_iter()
+    neopets_def
+        .into_iter()
         .map(|def| Neopet::try_from(def).expect("Failed to validate neopet"))
         .collect()
 }
@@ -143,27 +157,24 @@ mod tests {
 
     #[test]
     fn test_roundtrip_with_file_comparison() {
-        let original_json = fs::read_to_string("assets/neopets.json")
-            .expect("Failed to read original file");
-        
+        let original_json =
+            fs::read_to_string("assets/neopets.json").expect("Failed to read original file");
+
         let neopets = load_neopets("assets/neopets.json");
-        
-        let serialized_json = serde_json::to_string_pretty(&neopets)
-            .expect("Failed to serialize");
-        
-        let mut temp_file = NamedTempFile::new()
-            .expect("Failed to create temp file");
-        write!(temp_file, "{}", serialized_json)
-            .expect("Failed to write to temp file");
-        
-        let roundtrip_json = fs::read_to_string(temp_file.path())
-            .expect("Failed to read temp file");
-        
-        let original_value: serde_json::Value = serde_json::from_str(&original_json)
-            .expect("Failed to parse original JSON");
-        let roundtrip_value: serde_json::Value = serde_json::from_str(&roundtrip_json)
-            .expect("Failed to parse roundtrip JSON");
-        
+
+        let serialized_json = serde_json::to_string_pretty(&neopets).expect("Failed to serialize");
+
+        let mut temp_file = NamedTempFile::new().expect("Failed to create temp file");
+        write!(temp_file, "{}", serialized_json).expect("Failed to write to temp file");
+
+        let roundtrip_json =
+            fs::read_to_string(temp_file.path()).expect("Failed to read temp file");
+
+        let original_value: serde_json::Value =
+            serde_json::from_str(&original_json).expect("Failed to parse original JSON");
+        let roundtrip_value: serde_json::Value =
+            serde_json::from_str(&roundtrip_json).expect("Failed to parse roundtrip JSON");
+
         assert_eq!(original_value, roundtrip_value);
     }
 
@@ -257,8 +268,14 @@ mod tests {
             base_attack: 5,
             base_defense: 3,
             spells: vec![
-                Spell { name: "Spell1".to_string(), effect: serde_json::Value::Object(serde_json::Map::new()) },
-                Spell { name: "Spell2".to_string(), effect: serde_json::Value::Object(serde_json::Map::new()) },
+                Spell {
+                    name: "Spell1".to_string(),
+                    effect: serde_json::Value::Object(serde_json::Map::new()),
+                },
+                Spell {
+                    name: "Spell2".to_string(),
+                    effect: serde_json::Value::Object(serde_json::Map::new()),
+                },
             ],
             behavior: BehaviorDef {
                 attack_chance: 0.5,
@@ -298,8 +315,14 @@ mod tests {
             base_attack: 5,
             base_defense: 3,
             spells: vec![
-                Spell { name: "Spell1".to_string(), effect: serde_json::Value::Object(serde_json::Map::new()) },
-                Spell { name: "Spell2".to_string(), effect: serde_json::Value::Object(serde_json::Map::new()) },
+                Spell {
+                    name: "Spell1".to_string(),
+                    effect: serde_json::Value::Object(serde_json::Map::new()),
+                },
+                Spell {
+                    name: "Spell2".to_string(),
+                    effect: serde_json::Value::Object(serde_json::Map::new()),
+                },
             ],
             behavior: BehaviorDef {
                 attack_chance: 0.5,
@@ -319,9 +342,10 @@ mod tests {
             heal_delta: 10,
             base_attack: 5,
             base_defense: 3,
-            spells: vec![
-                Spell { name: "Spell1".to_string(), effect: serde_json::Value::Object(serde_json::Map::new()) },
-            ],
+            spells: vec![Spell {
+                name: "Spell1".to_string(),
+                effect: serde_json::Value::Object(serde_json::Map::new()),
+            }],
             behavior: BehaviorDef {
                 attack_chance: 0.5,
                 spell_chances: vec![0.1, 0.15],
@@ -341,8 +365,14 @@ mod tests {
             base_attack: 5,
             base_defense: 3,
             spells: vec![
-                Spell { name: "Spell1".to_string(), effect: serde_json::Value::Object(serde_json::Map::new()) },
-                Spell { name: "Spell2".to_string(), effect: serde_json::Value::Object(serde_json::Map::new()) },
+                Spell {
+                    name: "Spell1".to_string(),
+                    effect: serde_json::Value::Object(serde_json::Map::new()),
+                },
+                Spell {
+                    name: "Spell2".to_string(),
+                    effect: serde_json::Value::Object(serde_json::Map::new()),
+                },
             ],
             behavior: BehaviorDef {
                 attack_chance: 0.5,
@@ -366,8 +396,14 @@ mod tests {
             base_attack: 5,
             base_defense: 3,
             spells: vec![
-                Spell { name: "Spell1".to_string(), effect: serde_json::Value::Object(serde_json::Map::new()) },
-                Spell { name: "Spell2".to_string(), effect: serde_json::Value::Object(serde_json::Map::new()) },
+                Spell {
+                    name: "Spell1".to_string(),
+                    effect: serde_json::Value::Object(serde_json::Map::new()),
+                },
+                Spell {
+                    name: "Spell2".to_string(),
+                    effect: serde_json::Value::Object(serde_json::Map::new()),
+                },
             ],
             behavior: BehaviorDef {
                 attack_chance: 0.5,
@@ -443,7 +479,9 @@ mod tests {
         assert_eq!(neopets.len(), 3);
         for neopet in neopets {
             assert_eq!(neopet.behavior.spell_chances.len(), neopet.spells.len());
-            let total = neopet.behavior.attack_chance + neopet.behavior.heal_chance + neopet.behavior.spell_chances.iter().sum::<f64>();
+            let total = neopet.behavior.attack_chance
+                + neopet.behavior.heal_chance
+                + neopet.behavior.spell_chances.iter().sum::<f64>();
             assert!((total - 1.0).abs() <= f64::EPSILON);
         }
     }

@@ -1,9 +1,9 @@
-mod neopets;
 mod battle;
+mod neopets;
 mod utils;
 
-use neopets::load_neopets;
 use battle::battle_loop;
+use neopets::load_neopets;
 use utils::inspect_seed;
 
 fn main() {
