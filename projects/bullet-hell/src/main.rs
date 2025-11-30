@@ -1,182 +1,52 @@
-use crossterm::{
-    cursor::{self, MoveTo},
-    event::{self, Event, KeyCode, KeyEventKind},
-    execute,
-    style::{Color, Print, SetForegroundColor},
-    terminal::{Clear, ClearType, disable_raw_mode, enable_raw_mode},
-};
-use serde::Deserialize;
-use std::{
-    io::{self, Write},
-    time::Duration,
-};
+mod game;
+mod player;
+mod projectile;
+mod rendering;
+mod input;
+mod data;
 
-#[derive(Deserialize, Debug, Clone)]
-struct ProtoProjectile {
-    x: u16,
-    y: u16,
-    pattern: Vec<(i8, i8)>,
-}
-
-const MAP_WIDTH: u16 = 40;
-const MAP_HEIGHT: u16 = 20;
-
-struct Player {
-    x: u16,
-    y: u16,
-    max_hp: u16,
-    hp: u16,
-}
-
-struct Projectile {
-    x: u16,
-    y: u16,
-    pattern: Vec<(i8, i8)>,
-    step: usize,
-    active: bool,
-}
-
-fn load_blueprints(path: &str) -> Vec<ProtoProjectile> {
-    let txt =
-        std::fs::read_to_string(path).unwrap_or_else(|e| panic!("cannot read {}: {}", path, e));
-    ron::from_str(&txt).expect("bad RON")
-}
-
-impl Projectile {
-    fn update(&mut self) {
-        if !self.active {
-            return;
-        }
-        let (dx, dy) = self.pattern[self.step];
-        self.x = (self.x as i16 + dx as i16).clamp(1, MAP_WIDTH as i16 - 2) as u16;
-        self.y = (self.y as i16 + dy as i16).clamp(1, MAP_HEIGHT as i16 - 2) as u16;
-        self.step = (self.step + 1) % self.pattern.len();
-    }
-}
-
-fn setup_terminal() -> io::Result<()> {
-    enable_raw_mode()?;
-    execute!(io::stdout(), cursor::Hide, Clear(ClearType::All))?;
-    Ok(())
-}
-
-fn restore_terminal() -> io::Result<()> {
-    execute!(io::stdout(), cursor::Show)?;
-    disable_raw_mode()?;
-    Ok(())
-}
-
-fn draw_game(
-    player: &Player,
-    projectiles: &[Projectile],
-    stdout: &mut io::Stdout,
-) -> io::Result<()> {
-    execute!(stdout, Clear(ClearType::All), MoveTo(0, 0))?;
-
-    for x in 0..MAP_WIDTH {
-        for y in 0..MAP_HEIGHT {
-            let is_border = x == 0 || x == MAP_WIDTH - 1 || y == 0 || y == MAP_HEIGHT - 1;
-
-            if is_border {
-                execute!(stdout, MoveTo(x, y), Print("."))?;
-            }
-        }
-    }
-    execute!(stdout, SetForegroundColor(Color::Blue))?;
-    execute!(stdout, MoveTo(player.x, player.y), Print("♥"))?;
-    execute!(stdout, SetForegroundColor(Color::White))?;
-
-    for p in projectiles {
-        if p.active {
-            execute!(stdout, MoveTo(p.x, p.y), Print("|"))?;
-        }
-    }
-
-    execute!(
-        stdout,
-        MoveTo(2, MAP_HEIGHT),
-        Print(format!("HP: {}/{}", player.hp, player.max_hp))
-    )?;
-    let bar_len = 10;
-    let filled = ((player.hp as usize * bar_len) / player.max_hp as usize).min(bar_len);
-    let bar = format!("█").repeat(filled) + &"░".repeat(bar_len - filled);
-    execute!(stdout, MoveTo(2, MAP_HEIGHT + 1), Print(bar))?;
-
-    stdout.flush()?;
-    Ok(())
-}
-
-fn handle_input(player: &mut Player) -> io::Result<bool> {
-    if event::poll(Duration::from_millis(100))? {
-        let event = event::read()?;
-
-        if let Event::Key(key_event) = event {
-            if key_event.kind == KeyEventKind::Press {
-                match key_event.code {
-                    KeyCode::Char('q') | KeyCode::Esc => return Ok(false),
-
-                    KeyCode::Up => player.y = player.y.saturating_sub(1),
-                    KeyCode::Down => player.y += 1,
-                    KeyCode::Left => player.x = player.x.saturating_sub(1),
-                    KeyCode::Right => player.x += 1,
-
-                    _ => {}
-                }
-                player.x = player.x.clamp(1, MAP_WIDTH - 2);
-                player.y = player.y.clamp(1, MAP_HEIGHT - 2);
-            }
-        }
-    }
-    Ok(true)
-}
+use std::io;
 
 fn main() -> io::Result<()> {
-    let mut stdout = io::stdout();
+    let mut player = player::create_player();
+    let blueprints = data::load_blueprints("assets/projectiles.ron");
+    let mut projectiles = projectile::create_projectiles_from_blueprints(blueprints);
 
-    let mut player = Player {
-        x: MAP_WIDTH / 2,
-        y: MAP_HEIGHT / 2,
-        hp: 4,
-        max_hp: 5,
-    };
-
-    let blueprints = load_blueprints("assets/projectiles.ron");
-
-    let mut projectiles: Vec<Projectile> = blueprints
-        .into_iter()
-        .map(|p| Projectile {
-            x: p.x,
-            y: p.y,
-            pattern: p.pattern,
-            step: 0,
-            active: true,
-        })
-        .collect();
-
-    setup_terminal()?;
+    rendering::setup_terminal()?;
 
     let mut running = true;
     while running {
-        for p in &mut projectiles {
-            if p.active && (player.x, player.y) == (p.x, p.y) {
-                player.hp = player.hp.saturating_sub(1);
-                p.active = false;
+        // Handle input
+        match input::handle_input()? {
+            input::InputCommand::Quit => running = false,
+            input::InputCommand::MoveUp => player::move_player(&mut player, 0, -1),
+            input::InputCommand::MoveDown => player::move_player(&mut player, 0, 1),
+            input::InputCommand::MoveLeft => player::move_player(&mut player, -1, 0),
+            input::InputCommand::MoveRight => player::move_player(&mut player, 1, 0),
+            input::InputCommand::None => {}
+        }
+
+        // Update game state
+        for projectile in &mut projectiles {
+            if projectile::check_collision(&player, projectile) {
+                player::damage_player(&mut player, 1);
+                projectile.active = false;
             }
         }
 
-        for p in &mut projectiles {
-            p.update();
+        for projectile in &mut projectiles {
+            projectile::update_projectile(projectile);
         }
-        draw_game(&player, &projectiles, &mut stdout)?;
 
-        match handle_input(&mut player) {
-            Ok(keep_running) => running = keep_running,
-            Err(e) => {
-                eprintln!("An error occurred: {}", e);
-                break;
-            }
+        // Render
+        rendering::draw_game(&player, &projectiles)?;
+
+        // Check game over
+        if player.hp == 0 {
+            running = false;
         }
     }
-    restore_terminal()?;
+
+    rendering::restore_terminal()?;
     Ok(())
 }
