@@ -1,0 +1,6 @@
+[
+    (x: 1,  y: 10, pattern: [(1, 0)]),            // left → right
+    (x: 38, y: 8,  pattern: [(-1, 0)]),           // right → left
+    (x: 5,  y: 2,  pattern: [(1, 1)]),            // diagonal
+    (x: 20, y: 5,  pattern: [(0, -1), (0, -1), (0, 1), (0, 1), (-1, 0), (-1, 0), (1, 0), (1, 0), (1,1)]), // dance
+]
