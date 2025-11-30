@@ -1,11 +1,18 @@
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
+use std::fmt;
 use std::fs::File;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Spell {
     pub name: String,
     pub effect: serde_json::Value,
+}
+
+impl fmt::Display for Spell {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.name)
+    }
 }
 
 #[derive(Deserialize)]
@@ -38,6 +45,18 @@ impl TryFrom<BehaviorDef> for Behavior {
                 heal_chance: def.heal_chance,
             })
         }
+    }
+}
+
+impl fmt::Display for Behavior {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "⚔️ {:.0}% | 🪄 {:?} | 💚 {:.0}%",
+            self.attack_chance * 100.0,
+            self.spell_chances.iter().map(|c| format!("{:.0}%", c * 100.0)).collect::<Vec<_>>(),
+            self.heal_chance * 100.0
+        )
     }
 }
 
@@ -83,6 +102,27 @@ impl TryFrom<NeopetDef> for Neopet {
             spells: def.spells,
             behavior,
         })
+    }
+}
+
+impl fmt::Display for Neopet {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let spell_list = self.spells.iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        write!(
+            f,
+            "{}\nHP: {} | ATK: {} | DEF: {} | Heal: +{}\nSpells: {}\nBehavior: {}",
+            self.name,
+            self.health,
+            self.base_attack,
+            self.base_defense,
+            self.heal_delta,
+            spell_list,
+            self.behavior
+        )
     }
 }
 
