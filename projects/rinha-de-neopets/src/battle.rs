@@ -5,7 +5,7 @@ fn roll_d20() -> u8 {
     rand::rng().random_range(1..=20)
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum Action {
     Attack,
     CastSpell(usize),
@@ -72,12 +72,84 @@ pub fn battle_loop(fighter1: &Neopet, fighter2: &Neopet) {
 
 mod tests {
     use super::*;
+    use crate::neopets::Spell;
+    use crate::neopets::Behavior;
+    use rand::rngs::StdRng;
+    use rand::SeedableRng;
 
     #[test]
     fn test_roll_d20_always_within_range() {
         for _unused in 0..100 {
             let result = roll_d20();
             assert!(result >= 1 && result <= 20);
+        }
+    }
+
+    #[test]
+    fn test_choose_action_respects_neopet_probabilities() {
+        // StdRng with seed 42 outputs this, as verified with `inspect_seed`.
+        // Outputs
+        // [0] = 0.526557 -> heal
+        // [1] = 0.542725 -> heal
+        // [2] = 0.636465 -> spell 1
+        // [3] = 0.405902 -> heal
+        // [4] = 0.034343 -> attack
+        // [5] = 0.414957 -> heal
+        // [6] = 0.737424 -> spell 1
+        // [7] = 0.849252 -> spell 2
+        // [8] = 0.131279 -> attack
+        // [9] = 0.003252 -> attack
+        // [10] = 0.932145 -> spell 3
+        let mut rng = StdRng::seed_from_u64(42);
+        let neopet = Neopet {
+            name: "TestPet".to_string(),
+            health: 100,
+            heal_delta: 10,
+            base_attack: 5,
+            base_defense: 3,
+            spells: vec![
+                Spell {
+                    name: "Spell1".to_string(),
+                    effect: serde_json::Value::Object(serde_json::Map::new()),
+                },
+                Spell {
+                    name: "Spell2".to_string(),
+                    effect: serde_json::Value::Object(serde_json::Map::new()),
+                },
+                Spell {
+                    name: "Spell3".to_string(),
+                    effect: serde_json::Value::Object(serde_json::Map::new()),
+                }
+            ],
+            behavior: Behavior {
+                attack_chance: 0.40, // 0 to 0.40 -> attack
+                spell_chances: vec![ // 0.60 to 1.0 -> spell
+                    0.15, // 0.60 to 0.75 -> spell 1
+                    0.15, // 0.75 to 0.90 -> spell 2
+                    0.10, // 0.90 to 1.0 -> spell 3
+                ],
+                heal_chance: 0.20, // 0.40 to 0.60 -> heal
+            }
+        };
+
+        let expected_action_sequence = vec![
+            Action::Heal,
+            Action::Heal,
+            Action::CastSpell(0),
+            Action::Heal,
+            Action::Attack,
+            Action::Heal,
+            Action::CastSpell(0),
+            Action::CastSpell(1),
+            Action::Attack,
+            Action::Attack,
+            Action::CastSpell(2),
+        ];
+
+        for i in 0..11 {
+            let result = choose_action(&neopet, &mut rng);
+            println!("{:?}", result);
+            assert_eq!(result, expected_action_sequence[i]);
         }
     }
 }
