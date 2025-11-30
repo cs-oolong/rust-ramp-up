@@ -12,6 +12,29 @@ enum Action {
     Heal,
 }
 
+fn roll_for_initiative<'a, R: Rng>(
+    fighter1: &'a Neopet,
+    fighter2: &'a Neopet,
+    rng: &mut R,
+) -> (&'a Neopet, &'a Neopet) {
+    let mut fighter1_initiative = 0;
+    let mut fighter2_initiative = 0;
+
+    while fighter1_initiative == fighter2_initiative {
+        fighter1_initiative = roll_d20(rng);
+        fighter2_initiative = roll_d20(rng);
+    }
+
+    let mut first: &Neopet = fighter1;
+    let mut second: &Neopet = fighter2;
+
+    if fighter2_initiative > fighter1_initiative {
+        first = fighter2;
+        second = fighter1;
+    }
+    (first, second)
+}
+
 fn choose_action<R: Rng>(neopet: &Neopet, rng: &mut R) -> Action {
     let roll: f64 = rng.random();
     if roll < neopet.behavior.attack_chance {
@@ -33,25 +56,7 @@ fn choose_action<R: Rng>(neopet: &Neopet, rng: &mut R) -> Action {
 }
 
 pub fn battle_loop<R: Rng>(fighter1: &Neopet, fighter2: &Neopet, rng: &mut R) {
-    let mut fighter1_initiative = 0;
-    let mut fighter2_initiative = 0;
-
-    while fighter1_initiative == fighter2_initiative {
-        fighter1_initiative = roll_d20(rng);
-        fighter2_initiative = roll_d20(rng);
-    }
-
-    let mut first: &Neopet = fighter1;
-    let mut second: &Neopet = fighter2;
-
-    if fighter2_initiative > fighter1_initiative {
-        first = fighter2;
-        second = fighter1;
-    }
-
-    println!("fighter1 = {fighter1}, initiative = {fighter1_initiative}");
-    println!("fighter2 = {fighter2}, initiative = {fighter2_initiative}");
-    println!("first = {first}, second = {second}");
+    let (first, second) = roll_for_initiative(fighter1, fighter2, rng);
 
     let mut battle_in_progress = true;
     let max_turns = 10;
@@ -72,10 +77,44 @@ pub fn battle_loop<R: Rng>(fighter1: &Neopet, fighter2: &Neopet, rng: &mut R) {
 
 mod tests {
     use super::*;
-    use crate::neopets::Spell;
     use crate::neopets::Behavior;
-    use rand::rngs::StdRng;
+    use crate::neopets::Spell;
     use rand::SeedableRng;
+    use rand::rngs::StdRng;
+
+    fn get_testing_neopet() -> Neopet {
+        Neopet {
+            name: "TestPet".to_string(),
+            health: 100,
+            heal_delta: 10,
+            base_attack: 5,
+            base_defense: 3,
+            spells: vec![
+                Spell {
+                    name: "Spell1".to_string(),
+                    effect: serde_json::Value::Object(serde_json::Map::new()),
+                },
+                Spell {
+                    name: "Spell2".to_string(),
+                    effect: serde_json::Value::Object(serde_json::Map::new()),
+                },
+                Spell {
+                    name: "Spell3".to_string(),
+                    effect: serde_json::Value::Object(serde_json::Map::new()),
+                },
+            ],
+            behavior: Behavior {
+                attack_chance: 0.40, // 0 to 0.40 -> attack
+                spell_chances: vec![
+                    // 0.60 to 1.0 -> spell
+                    0.15, // 0.60 to 0.75 -> spell 1
+                    0.15, // 0.75 to 0.90 -> spell 2
+                    0.10, // 0.90 to 1.0 -> spell 3
+                ],
+                heal_chance: 0.20, // 0.40 to 0.60 -> heal
+            },
+        }
+    }
 
     #[test]
     fn test_roll_d20_always_within_range() {
@@ -102,36 +141,7 @@ mod tests {
         // [9] = 0.003252 -> attack
         // [10] = 0.932145 -> spell 3
         let mut rng = StdRng::seed_from_u64(42);
-        let neopet = Neopet {
-            name: "TestPet".to_string(),
-            health: 100,
-            heal_delta: 10,
-            base_attack: 5,
-            base_defense: 3,
-            spells: vec![
-                Spell {
-                    name: "Spell1".to_string(),
-                    effect: serde_json::Value::Object(serde_json::Map::new()),
-                },
-                Spell {
-                    name: "Spell2".to_string(),
-                    effect: serde_json::Value::Object(serde_json::Map::new()),
-                },
-                Spell {
-                    name: "Spell3".to_string(),
-                    effect: serde_json::Value::Object(serde_json::Map::new()),
-                }
-            ],
-            behavior: Behavior {
-                attack_chance: 0.40, // 0 to 0.40 -> attack
-                spell_chances: vec![ // 0.60 to 1.0 -> spell
-                    0.15, // 0.60 to 0.75 -> spell 1
-                    0.15, // 0.75 to 0.90 -> spell 2
-                    0.10, // 0.90 to 1.0 -> spell 3
-                ],
-                heal_chance: 0.20, // 0.40 to 0.60 -> heal
-            }
-        };
+        let neopet = get_testing_neopet();
 
         let expected_action_sequence = vec![
             Action::Heal,
@@ -148,7 +158,31 @@ mod tests {
         ];
 
         for i in 0..11 {
-            assert_eq!(choose_action(&neopet, &mut rng), expected_action_sequence[i]);
+            assert_eq!(
+                choose_action(&neopet, &mut rng),
+                expected_action_sequence[i]
+            );
+        }
+    }
+
+    #[test]
+    fn test_roll_for_initiative_respects_bigger_roll() {
+        let fighter1 = get_testing_neopet();
+        let fighter2 = get_testing_neopet();
+
+        // 3, 11, 5, 11, 18, 13, 20, 9, 20, 1
+        let mut rng = StdRng::seed_from_u64(42);
+
+        let expected = vec![
+            (&fighter1, &fighter2),
+            (&fighter1, &fighter2),
+            (&fighter2, &fighter1),
+            (&fighter2, &fighter1),
+            (&fighter2, &fighter1),
+        ];
+
+        for i in 0..5 {
+            assert_eq!(roll_for_initiative(&fighter1, &fighter2, &mut rng), expected[i])
         }
     }
 }
