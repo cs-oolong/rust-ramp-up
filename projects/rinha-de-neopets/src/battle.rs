@@ -147,9 +147,7 @@ mod tests {
         ];
 
         for i in 0..11 {
-            let result = choose_action(&neopet, &mut rng);
-            println!("{:?}", result);
-            assert_eq!(result, expected_action_sequence[i]);
+            assert_eq!(choose_action(&neopet, &mut rng), expected_action_sequence[i]);
         }
     }
 }
