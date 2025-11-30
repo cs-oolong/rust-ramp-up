@@ -47,7 +47,9 @@ pub fn draw_game(player: &Player, projectiles: &[Projectile]) -> io::Result<()> 
     // Draw projectiles
     for p in projectiles {
         if p.active {
-            execute!(stdout, MoveTo(p.x, p.y), Print("|"))?;
+            execute!(stdout, SetForegroundColor(Color::Red))?;
+            execute!(stdout, MoveTo(p.x, p.y), Print("*"))?;
+            execute!(stdout, SetForegroundColor(Color::White))?;
         }
     }
 
