@@ -8,6 +8,6 @@ use utils::inspect_seed;
 
 fn main() {
     //let neopets_set = load_neopets("assets/neopets.json");
-    //battle_loop(&neopets_set[0], &neopets_set[1]);
+    //battle_loop(&neopets_set[0], &neopets_set[1], &mut rand::rng());
     inspect_seed(42, 20);
 }

@@ -1,8 +1,8 @@
 use crate::neopets::Neopet;
 use rand::Rng;
 
-fn roll_d20() -> u8 {
-    rand::rng().random_range(1..=20)
+fn roll_d20<R: Rng>(rng: &mut R) -> u8 {
+    rng.random_range(1..=20)
 }
 
 #[derive(Debug, PartialEq)]
@@ -32,13 +32,13 @@ fn choose_action<R: Rng>(neopet: &Neopet, rng: &mut R) -> Action {
     }
 }
 
-pub fn battle_loop(fighter1: &Neopet, fighter2: &Neopet) {
+pub fn battle_loop<R: Rng>(fighter1: &Neopet, fighter2: &Neopet, rng: &mut R) {
     let mut fighter1_initiative = 0;
     let mut fighter2_initiative = 0;
 
     while fighter1_initiative == fighter2_initiative {
-        fighter1_initiative = roll_d20();
-        fighter2_initiative = roll_d20();
+        fighter1_initiative = roll_d20(rng);
+        fighter2_initiative = roll_d20(rng);
     }
 
     let mut first: &Neopet = fighter1;
@@ -58,11 +58,11 @@ pub fn battle_loop(fighter1: &Neopet, fighter2: &Neopet) {
 
     let mut turn = 0;
     while battle_in_progress && turn < max_turns {
-        let first_action = choose_action(first, &mut rand::rng());
+        let first_action = choose_action(first, rng);
         println!("{}: {:?}", first.name, first_action);
         turn += 1;
         println!("turn {turn}");
-        let second_action = choose_action(second, &mut rand::rng());
+        let second_action = choose_action(second, rng);
         println!("{}: {:?}", second.name, second_action);
         turn += 2;
         println!("turn {turn}");
@@ -79,8 +79,9 @@ mod tests {
 
     #[test]
     fn test_roll_d20_always_within_range() {
+        let mut rng = rand::rng();
         for _unused in 0..100 {
-            let result = roll_d20();
+            let result = roll_d20(&mut rng);
             assert!(result >= 1 && result <= 20);
         }
     }
