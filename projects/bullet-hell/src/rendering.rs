@@ -2,6 +2,7 @@
 //! If you touch this file, verify the comment above is still true and
 //! the file should remain excluded from coverage.
 #![warn(you_are_editing_an_coverage_excluded_file)] // ← unknown attribute
+// TODO: this always warns, right way would be to warn only when the file is actually changed, on a CI tool
 
 use crate::game::{MAP_HEIGHT, MAP_WIDTH, Player, Projectile};
 use crossterm::{

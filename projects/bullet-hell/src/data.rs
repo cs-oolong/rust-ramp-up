@@ -10,12 +10,13 @@ pub fn load_blueprints(path: &str) -> Vec<ProtoProjectile> {
 mod tests {
     use super::*;
 
-    fn create_temp_ron_file(content: &str) -> std::io::Result<tempfile::NamedTempFile> {
+    //! Excluded from coverage because it's just a helper function for the tests below.
+    fn create_temp_ron_file(content: &str) -> tempfile::NamedTempFile {
         use std::io::Write;
-        let mut file = tempfile::NamedTempFile::new()?;
-        file.write_all(content.as_bytes())?;
-        file.flush()?;
-        Ok(file)
+        let mut file = tempfile::NamedTempFile::new().expect("Failed to create temp file");
+        file.write_all(content.as_bytes()).expect("Failed to write to temp file");
+        file.flush().expect("Failed to flush temp file");
+        file
     }
 
     #[test]
