@@ -1,9 +1,9 @@
+mod data;
 mod game;
+mod input;
 mod player;
 mod projectile;
 mod rendering;
-mod input;
-mod data;
 
 use std::io;
 
