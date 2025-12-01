@@ -12,6 +12,57 @@ enum Action {
     Heal,
 }
 
+fn process_turn<R: Rng>(actor: &Neopet, other: &Neopet, action: &Action, rng: &mut R) {
+    println!("{}: {:?}", actor.name, action);
+    
+    match action {
+        Action::Attack => {
+            let attack_roll = roll_d20(rng);
+            println!("attack roll {attack_roll}");
+            if attack_roll == 20 {
+                println!("positive crit!");
+            }
+            if attack_roll == 1 {
+                println!("negative crit!");
+            }
+            let attack_val = (attack_roll as u32) + actor.base_attack;
+            println!("attack_val {attack_val}");
+
+            let defense_roll = roll_d20(rng);
+            println!("defense roll {defense_roll}");
+            if defense_roll == 20 {
+                println!("positive crit!");
+            }
+            if defense_roll == 1 {
+                println!("negative crit!");
+            }
+            let defense_val = (defense_roll as u32) + other.base_defense;
+        }
+        Action::Heal => {
+            let heal_roll = roll_d20(rng);
+            println!("heal roll {heal_roll}");
+            let mut heal_val = actor.heal_delta;
+            if heal_roll == 20 {
+                println!("positive crit!");
+                heal_val = heal_val * 2;
+            }
+            if heal_roll == 1 {
+                println!("negative crit!");
+                heal_val = 0;
+            }
+            println!("heal_val {heal_val}");
+        }
+        Action::CastSpell(spell_index) => {
+            println!("Casting spell at index {}", spell_index);
+            if let Some(spell) = actor.spells.get(*spell_index) {
+                println!("Spell name: {}", spell.name);
+            } else {
+                println!("Error: No spell found at index {}", spell_index);
+            }
+        }
+    }
+}
+
 fn roll_for_initiative<'a, R: Rng>(
     fighter1: &'a Neopet,
     fighter2: &'a Neopet,
@@ -59,22 +110,21 @@ pub fn battle_loop<R: Rng>(fighter1: &Neopet, fighter2: &Neopet, rng: &mut R) {
     let (first, second) = roll_for_initiative(fighter1, fighter2, rng);
 
     let mut battle_in_progress = true;
-    let max_turns = 10;
+    let max_turns = 2000;
 
     let mut turn = 0;
     while battle_in_progress && turn < max_turns {
         let first_action = choose_action(first, rng);
-        println!("{}: {:?}", first.name, first_action);
         turn += 1;
-        println!("turn {turn}");
+        process_turn(first, second, &first_action, rng);
+
         let second_action = choose_action(second, rng);
-        println!("{}: {:?}", second.name, second_action);
-        turn += 2;
-        println!("turn {turn}");
+        turn += 1;
+        process_turn(second, first, &second_action, rng);
     }
-    // Turns start, respecting the initiative result.
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::neopets::Behavior;
