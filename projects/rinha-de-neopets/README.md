@@ -75,4 +75,5 @@ Same as the programmatically created neopets issue, but for BattleEvents. For ex
 ## Extra - Only if there is time
 
 ### 1. ASCII art & animations for the battle display
+
 ---

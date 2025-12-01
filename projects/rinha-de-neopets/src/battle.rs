@@ -12,6 +12,21 @@ enum Action {
     Heal,
 }
 
+enum BattleCompletion {
+    FighterZeroHealth,
+    MaxTurnsReached,
+    Ongoing,
+}
+
+struct BattleState {
+    turn: u32,
+    neopet1: String,
+    neopet1_health: u32,
+    neopet2: String,
+    neopet2_health: u32,
+    completion: BattleCompletion,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum BattleEvent {
     Roll {
