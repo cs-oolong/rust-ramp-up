@@ -14,7 +14,7 @@ What is still missing:
 - Beautiful display for the battle events.
 - Generate pairs of Neopets, so that we have a "live battles" list.
 - Let the user pick which battle to watch.
-- The actual betting, odds, cash out, balance, profit etc. system. 
+- The actual betting, odds, cash out, balance, profit etc. system.
 
 ## TODOs & Technical Debt
 
@@ -70,6 +70,7 @@ let invalid_neopet = Neopet {
 
 Same as the programmatically created neopets issue, but for BattleEvents. For example, a Roll can't be positive crit and negative crit at the same time.
 
+### 3. Migrate utils.rs as helper tests, similarly to what we have on battle.rs for find_seed. Or just remove it.
 
 ## Extra - Only if there is time
 
