@@ -53,4 +53,8 @@ let invalid_neopet = Neopet {
 - `src/battle.rs`: Call `validate()` before starting battle
 - Tests: Either use builder or call `validate().unwrap()` after construction
 
+### 2. Runtime Validation for Programmatically Created BattleEvents
+
+Same as the programmatically created neopets issue, but for BattleEvents. For example, a Roll can't be positive crit and negative crit at the same time.
+
 ---
