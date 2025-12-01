@@ -483,3 +483,577 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod process_turn_tests {
+    use super::*;
+    use std::cell::Cell;
+    use rand::distr::uniform::{SampleUniform, SampleRange};
+    use rand::distr::{Distribution, StandardUniform};
+    use rand::RngCore;
+
+    /// Fixed RNG for testing - returns pre-programmed dice values in sequence
+    struct FixedRng {
+        values: Vec<u8>,
+        index: Cell<usize>,
+    }
+
+    impl FixedRng {
+        fn new(values: Vec<u8>) -> Self {
+            Self {
+                values,
+                index: Cell::new(0),
+            }
+        }
+
+        fn next_value(&self) -> u8 {
+            let idx = self.index.get();
+            let val = self.values[idx % self.values.len()];
+            self.index.set(idx + 1);
+            val
+        }
+    }
+
+    impl RngCore for FixedRng {
+        fn next_u32(&mut self) -> u32 {
+            // Scale the u8 value to u32 range to work with random_range
+            // The random_range implementation uses the full u32 range
+            let val = self.next_value() as u32;
+            // Map our values (1-20) uniformly across the u32 space
+            // This ensures random_range(1..=20) will return our exact values
+            val * (u32::MAX / 21)
+        }
+
+        fn next_u64(&mut self) -> u64 {
+            self.next_u32() as u64
+        }
+
+        fn fill_bytes(&mut self, dest: &mut [u8]) {
+            for byte in dest {
+                *byte = self.next_value();
+            }
+        }
+    }
+
+    // Note: Rng is automatically implemented for all RngCore types
+    // so we don't need to implement it explicitly
+
+    /// Helper to create a test Neopet with full control
+    fn test_neopet(name: &str, attack: u32, defense: u32, heal_delta: u32, spells: Vec<crate::neopets::Spell>) -> crate::neopets::Neopet {
+        crate::neopets::Neopet {
+            name: name.to_string(),
+            health: 100,
+            heal_delta,
+            base_attack: attack,
+            base_defense: defense,
+            spells,
+            behavior: crate::neopets::Behavior {
+                attack_chance: 0.5,
+                spell_chances: vec![],
+                heal_chance: 0.5,
+            },
+        }
+    }
+
+    /// Helper to create a simple test Neopet with default spells
+    fn test_neopet_simple(name: &str, attack: u32, defense: u32) -> crate::neopets::Neopet {
+        test_neopet(name, attack, defense, 10, vec![
+            crate::neopets::Spell {
+                name: "Fireball".to_string(),
+                effect: serde_json::Value::Object(serde_json::Map::new()),
+            },
+            crate::neopets::Spell {
+                name: "Ice Storm".to_string(),
+                effect: serde_json::Value::Object(serde_json::Map::new()),
+            },
+        ])
+    }
+
+    // ==================== Attack Action Tests ====================
+
+    #[test]
+    fn test_attack_normal_damage() {
+        // Attack roll = 14, Defense roll = 8
+        let mut rng = FixedRng::new(vec![14, 8]);
+
+        let attacker = test_neopet_simple("Alice", 10, 0);
+        let defender = test_neopet_simple("Bob", 0, 5);
+
+        let events = process_turn(&attacker, &defender, &Action::Attack, 1, &mut rng);
+
+        // Should have 3 events: attack roll, defense roll, attack
+        assert_eq!(events.len(), 3);
+
+        // Verify attack roll event
+        match &events[0] {
+            BattleEvent::Roll { turn, actor, dice, final_value, is_positive_crit, is_negative_crit, goal } => {
+                assert_eq!(*turn, 1);
+                assert_eq!(actor, "Alice");
+                assert_eq!(*dice, 14);
+                assert_eq!(*final_value, 24); // 14 + 10 base_attack
+                assert!(!is_positive_crit);
+                assert!(!is_negative_crit);
+                assert_eq!(goal, "attack");
+            }
+            _ => panic!("Expected Roll event for attack"),
+        }
+
+        // Verify defense roll event
+        match &events[1] {
+            BattleEvent::Roll { turn, actor, dice, final_value, is_positive_crit, is_negative_crit, goal } => {
+                assert_eq!(*turn, 1);
+                assert_eq!(actor, "Bob");
+                assert_eq!(*dice, 8);
+                assert_eq!(*final_value, 13); // 8 + 5 base_defense
+                assert!(!is_positive_crit);
+                assert!(!is_negative_crit);
+                assert_eq!(goal, "defense");
+            }
+            _ => panic!("Expected Roll event for defense"),
+        }
+
+        // Verify attack event with damage calculation
+        match &events[2] {
+            BattleEvent::Attack { turn, actor, target, raw_damage, shield_value, actual_damage } => {
+                assert_eq!(*turn, 1);
+                assert_eq!(actor, "Alice");
+                assert_eq!(target, "Bob");
+                assert_eq!(*raw_damage, 24);
+                assert_eq!(*shield_value, 13);
+                assert_eq!(*actual_damage, 11); // 24 - 13 = 11
+            }
+            _ => panic!("Expected Attack event"),
+        }
+    }
+
+    #[test]
+    fn test_attack_positive_crit() {
+        // Attack roll = 20 (positive crit), Defense roll = 5
+        let mut rng = FixedRng::new(vec![20, 5]);
+
+        let attacker = test_neopet_simple("Alice", 10, 0);
+        let defender = test_neopet_simple("Bob", 0, 8);
+
+        let events = process_turn(&attacker, &defender, &Action::Attack, 1, &mut rng);
+
+        assert_eq!(events.len(), 3);
+
+        // Verify attack roll is marked as positive crit
+        match &events[0] {
+            BattleEvent::Roll { dice, final_value, is_positive_crit, is_negative_crit, .. } => {
+                assert_eq!(*dice, 20);
+                assert_eq!(*final_value, 30); // 20 + 10
+                assert!(is_positive_crit);
+                assert!(!is_negative_crit);
+            }
+            _ => panic!("Expected Roll event"),
+        }
+
+        // Verify defense roll
+        match &events[1] {
+            BattleEvent::Roll { dice, final_value, .. } => {
+                assert_eq!(*dice, 5);
+                assert_eq!(*final_value, 13); // 5 + 8
+            }
+            _ => panic!("Expected Roll event"),
+        }
+
+        // Verify damage is doubled due to crit
+        match &events[2] {
+            BattleEvent::Attack { raw_damage, shield_value, actual_damage, .. } => {
+                assert_eq!(*raw_damage, 30);
+                assert_eq!(*shield_value, 13);
+                // Normal damage: 30 - 13 = 17
+                // Crit doubles it: 17 * 2 = 34
+                assert_eq!(*actual_damage, 34);
+            }
+            _ => panic!("Expected Attack event"),
+        }
+    }
+
+    #[test]
+    fn test_attack_negative_crit() {
+        // Attack roll = 1 (negative crit), Defense roll = 10
+        let mut rng = FixedRng::new(vec![1, 10]);
+
+        let attacker = test_neopet_simple("Alice", 15, 0);
+        let defender = test_neopet_simple("Bob", 0, 5);
+
+        let events = process_turn(&attacker, &defender, &Action::Attack, 1, &mut rng);
+
+        assert_eq!(events.len(), 3);
+
+        // Verify attack roll is marked as negative crit
+        match &events[0] {
+            BattleEvent::Roll { dice, is_positive_crit, is_negative_crit, .. } => {
+                assert_eq!(*dice, 1);
+                assert!(!is_positive_crit);
+                assert!(is_negative_crit);
+            }
+            _ => panic!("Expected Roll event"),
+        }
+
+        // Verify damage is 0 due to negative crit
+        match &events[2] {
+            BattleEvent::Attack { actual_damage, .. } => {
+                assert_eq!(*actual_damage, 0); // Negative crit zeros all damage
+            }
+            _ => panic!("Expected Attack event"),
+        }
+    }
+
+    #[test]
+    fn test_attack_defense_exceeds_attack() {
+        // Attack roll = 5, Defense roll = 15 (defense will be higher)
+        let mut rng = FixedRng::new(vec![5, 15]);
+
+        let attacker = test_neopet_simple("Alice", 1, 0);  // Low attack
+        let defender = test_neopet_simple("Bob", 0, 20); // High defense
+
+        let events = process_turn(&attacker, &defender, &Action::Attack, 1, &mut rng);
+
+        assert_eq!(events.len(), 3);
+
+        // Verify damage is 0 due to saturating subtraction
+        match &events[2] {
+            BattleEvent::Attack { raw_damage, shield_value, actual_damage, .. } => {
+                assert_eq!(*raw_damage, 6);  // 5 + 1
+                assert_eq!(*shield_value, 35); // 15 + 20
+                assert_eq!(*actual_damage, 0); // saturating_sub results in 0
+            }
+            _ => panic!("Expected Attack event"),
+        }
+    }
+
+    #[test]
+    fn test_attack_both_roll_twenty() {
+        // Both attacker and defender roll 20 (both crit)
+        let mut rng = FixedRng::new(vec![20, 20]);
+
+        let attacker = test_neopet_simple("Alice", 10, 0);
+        let defender = test_neopet_simple("Bob", 0, 10);
+
+        let events = process_turn(&attacker, &defender, &Action::Attack, 1, &mut rng);
+
+        assert_eq!(events.len(), 3);
+
+        // Both rolls should be marked as positive crits
+        match &events[0] {
+            BattleEvent::Roll { dice, is_positive_crit, .. } => {
+                assert_eq!(*dice, 20);
+                assert!(is_positive_crit);
+            }
+            _ => panic!("Expected Roll event"),
+        }
+
+        match &events[1] {
+            BattleEvent::Roll { dice, is_positive_crit, .. } => {
+                assert_eq!(*dice, 20);
+                assert!(is_positive_crit);
+            }
+            _ => panic!("Expected Roll event"),
+        }
+
+        // Attack: (20 + 10) - (20 + 10) = 0, then * 2 (crit) = 0
+        match &events[2] {
+            BattleEvent::Attack { actual_damage, .. } => {
+                assert_eq!(*actual_damage, 0);
+            }
+            _ => panic!("Expected Attack event"),
+        }
+    }
+
+    // ==================== Heal Action Tests ====================
+
+    #[test]
+    fn test_heal_normal() {
+        // Heal roll = 10 (normal, not 1 or 20)
+        let mut rng = FixedRng::new(vec![10]);
+
+        let mut healer = test_neopet_simple("Alice", 0, 0);
+        healer.heal_delta = 15;
+        let other = test_neopet_simple("Bob", 0, 0);
+
+        let events = process_turn(&healer, &other, &Action::Heal, 1, &mut rng);
+
+        // Should have 2 events: heal roll, heal
+        assert_eq!(events.len(), 2);
+
+        // Verify heal roll event
+        match &events[0] {
+            BattleEvent::Roll { turn, actor, dice, is_positive_crit, is_negative_crit, goal, .. } => {
+                assert_eq!(*turn, 1);
+                assert_eq!(actor, "Alice");
+                assert_eq!(*dice, 10);
+                assert!(!is_positive_crit);
+                assert!(!is_negative_crit);
+                assert_eq!(goal, "heal");
+            }
+            _ => panic!("Expected Roll event"),
+        }
+
+        // Verify heal event
+        match &events[1] {
+            BattleEvent::Heal { turn, actor, amount } => {
+                assert_eq!(*turn, 1);
+                assert_eq!(actor, "Alice");
+                assert_eq!(*amount, 15); // Normal heal_delta
+            }
+            _ => panic!("Expected Heal event"),
+        }
+    }
+
+    #[test]
+    fn test_heal_positive_crit() {
+        // Heal roll = 20 (positive crit)
+        let mut rng = FixedRng::new(vec![20]);
+
+        let mut healer = test_neopet_simple("Alice", 0, 0);
+        healer.heal_delta = 10;
+        let other = test_neopet_simple("Bob", 0, 0);
+
+        let events = process_turn(&healer, &other, &Action::Heal, 1, &mut rng);
+
+        assert_eq!(events.len(), 2);
+
+        // Verify heal roll is marked as positive crit
+        match &events[0] {
+            BattleEvent::Roll { dice, is_positive_crit, is_negative_crit, .. } => {
+                assert_eq!(*dice, 20);
+                assert!(is_positive_crit);
+                assert!(!is_negative_crit);
+            }
+            _ => panic!("Expected Roll event"),
+        }
+
+        // Verify heal is doubled
+        match &events[1] {
+            BattleEvent::Heal { amount, .. } => {
+                assert_eq!(*amount, 20); // 10 * 2 = 20
+            }
+            _ => panic!("Expected Heal event"),
+        }
+    }
+
+    #[test]
+    fn test_heal_negative_crit() {
+        // Heal roll = 1 (negative crit)
+        let mut rng = FixedRng::new(vec![1]);
+
+        let mut healer = test_neopet_simple("Alice", 0, 0);
+        healer.heal_delta = 10;
+        let other = test_neopet_simple("Bob", 0, 0);
+
+        let events = process_turn(&healer, &other, &Action::Heal, 1, &mut rng);
+
+        assert_eq!(events.len(), 2);
+
+        // Verify heal roll is marked as negative crit
+        match &events[0] {
+            BattleEvent::Roll { dice, is_positive_crit, is_negative_crit, .. } => {
+                assert_eq!(*dice, 1);
+                assert!(!is_positive_crit);
+                assert!(is_negative_crit);
+            }
+            _ => panic!("Expected Roll event"),
+        }
+
+        // Verify heal is 0
+        match &events[1] {
+            BattleEvent::Heal { amount, .. } => {
+                assert_eq!(*amount, 0); // Negative crit zeros heal
+            }
+            _ => panic!("Expected Heal event"),
+        }
+    }
+
+    // ==================== CastSpell Action Tests ====================
+
+    #[test]
+    fn test_spell_cast_valid_index() {
+        let mut rng = FixedRng::new(vec![10]); // RNG not used for spells
+
+        let caster = test_neopet_simple("Alice", 0, 0);
+        let target = test_neopet_simple("Bob", 0, 0);
+
+        let events = process_turn(&caster, &target, &Action::CastSpell(0), 1, &mut rng);
+
+        // Should have 1 event: spell cast
+        assert_eq!(events.len(), 1);
+
+        match &events[0] {
+            BattleEvent::SpellCast { turn, actor, target: tgt, spell_name } => {
+                assert_eq!(*turn, 1);
+                assert_eq!(actor, "Alice");
+                assert_eq!(tgt, "Bob");
+                assert_eq!(spell_name, "Fireball"); // First spell in test_neopet_simple
+            }
+            _ => panic!("Expected SpellCast event"),
+        }
+    }
+
+    #[test]
+    fn test_spell_cast_second_spell() {
+        let mut rng = FixedRng::new(vec![10]);
+
+        let caster = test_neopet_simple("Alice", 0, 0);
+        let target = test_neopet_simple("Bob", 0, 0);
+
+        let events = process_turn(&caster, &target, &Action::CastSpell(1), 1, &mut rng);
+
+        assert_eq!(events.len(), 1);
+
+        match &events[0] {
+            BattleEvent::SpellCast { spell_name, .. } => {
+                assert_eq!(spell_name, "Ice Storm"); // Second spell
+            }
+            _ => panic!("Expected SpellCast event"),
+        }
+    }
+
+    #[test]
+    fn test_spell_cast_invalid_index() {
+        let mut rng = FixedRng::new(vec![10]);
+
+        let caster = test_neopet_simple("Alice", 0, 0);
+        let target = test_neopet_simple("Bob", 0, 0);
+
+        let events = process_turn(&caster, &target, &Action::CastSpell(99), 1, &mut rng);
+
+        assert_eq!(events.len(), 1);
+
+        match &events[0] {
+            BattleEvent::SpellCast { spell_name, .. } => {
+                assert_eq!(spell_name, "Unknown Spell"); // Fallback for out of bounds
+            }
+            _ => panic!("Expected SpellCast event"),
+        }
+    }
+
+    // ==================== Additional Edge Case Tests ====================
+
+    #[test]
+    fn test_attack_with_zero_stats() {
+        // Attack with 0 base stats
+        let mut rng = FixedRng::new(vec![10, 10]);
+
+        let attacker = test_neopet_simple("Alice", 0, 0);
+        let defender = test_neopet_simple("Bob", 0, 0);
+
+        let events = process_turn(&attacker, &defender, &Action::Attack, 1, &mut rng);
+
+        assert_eq!(events.len(), 3);
+
+        // With 0 base stats and normal rolls, damage should be 0 (10 - 10 = 0)
+        match &events[2] {
+            BattleEvent::Attack { raw_damage, shield_value, actual_damage, .. } => {
+                assert_eq!(*raw_damage, 10);
+                assert_eq!(*shield_value, 10);
+                assert_eq!(*actual_damage, 0);
+            }
+            _ => panic!("Expected Attack event"),
+        }
+    }
+
+    #[test]
+    fn test_turn_number_propagation_attack() {
+        let mut rng = FixedRng::new(vec![10, 10]);
+        let attacker = test_neopet_simple("Alice", 5, 0);
+        let defender = test_neopet_simple("Bob", 0, 5);
+
+        // Test with turn 5
+        let events = process_turn(&attacker, &defender, &Action::Attack, 5, &mut rng);
+
+        for event in &events {
+            match event {
+                BattleEvent::Roll { turn, .. } => assert_eq!(*turn, 5),
+                BattleEvent::Attack { turn, .. } => assert_eq!(*turn, 5),
+                _ => {}
+            }
+        }
+    }
+
+    #[test]
+    fn test_turn_number_propagation_heal() {
+        let mut rng = FixedRng::new(vec![10]);
+        let healer = test_neopet_simple("Alice", 0, 0);
+        let other = test_neopet_simple("Bob", 0, 0);
+
+        // Test with turn 10
+        let events = process_turn(&healer, &other, &Action::Heal, 10, &mut rng);
+
+        for event in &events {
+            match event {
+                BattleEvent::Roll { turn, .. } => assert_eq!(*turn, 10),
+                BattleEvent::Heal { turn, .. } => assert_eq!(*turn, 10),
+                _ => {}
+            }
+        }
+    }
+
+    #[test]
+    fn test_turn_number_propagation_spell() {
+        let mut rng = FixedRng::new(vec![10]);
+        let caster = test_neopet_simple("Alice", 0, 0);
+        let target = test_neopet_simple("Bob", 0, 0);
+
+        // Test with turn 7
+        let events = process_turn(&caster, &target, &Action::CastSpell(0), 7, &mut rng);
+
+        for event in &events {
+            match event {
+                BattleEvent::SpellCast { turn, .. } => assert_eq!(*turn, 7),
+                _ => {}
+            }
+        }
+    }
+
+    #[test]
+    fn test_actor_and_target_names() {
+        let mut rng = FixedRng::new(vec![10, 10]);
+        let attacker = test_neopet_simple("Pikachu", 5, 0);
+        let defender = test_neopet_simple("Charizard", 0, 5);
+
+        let events = process_turn(&attacker, &defender, &Action::Attack, 1, &mut rng);
+
+        // Check attack roll has correct actor
+        match &events[0] {
+            BattleEvent::Roll { actor, .. } => assert_eq!(actor, "Pikachu"),
+            _ => panic!("Expected Roll event"),
+        }
+
+        // Check defense roll has correct actor (the defender)
+        match &events[1] {
+            BattleEvent::Roll { actor, .. } => assert_eq!(actor, "Charizard"),
+            _ => panic!("Expected Roll event"),
+        }
+
+        // Check attack event has correct actor and target
+        match &events[2] {
+            BattleEvent::Attack { actor, target, .. } => {
+                assert_eq!(actor, "Pikachu");
+                assert_eq!(target, "Charizard");
+            }
+            _ => panic!("Expected Attack event"),
+        }
+    }
+
+    #[test]
+    fn test_event_count_for_all_actions() {
+        let mut rng = FixedRng::new(vec![10, 10]);
+        let neopet1 = test_neopet_simple("Alice", 5, 5);
+        let neopet2 = test_neopet_simple("Bob", 5, 5);
+
+        // Attack should produce 3 events
+        let attack_events = process_turn(&neopet1, &neopet2, &Action::Attack, 1, &mut rng);
+        assert_eq!(attack_events.len(), 3);
+
+        // Heal should produce 2 events
+        let heal_events = process_turn(&neopet1, &neopet2, &Action::Heal, 1, &mut rng);
+        assert_eq!(heal_events.len(), 2);
+
+        // Spell should produce 1 event
+        let spell_events = process_turn(&neopet1, &neopet2, &Action::CastSpell(0), 1, &mut rng);
+        assert_eq!(spell_events.len(), 1);
+    }
+}
