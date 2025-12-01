@@ -12,53 +12,137 @@ enum Action {
     Heal,
 }
 
-fn process_turn<R: Rng>(actor: &Neopet, other: &Neopet, action: &Action, rng: &mut R) {
-    println!("{}: {:?}", actor.name, action);
-    
+#[derive(Debug, Clone, PartialEq)]
+pub enum BattleEvent {
+    Roll {
+        turn: u32,
+        actor: String,
+        dice: u8,
+        final_value: u32,
+        is_positive_crit: bool,
+        is_negative_crit: bool,
+        goal: String,
+    },
+    Attack {
+        turn: u32,
+        actor: String,
+        target: String,
+        raw_damage: u32,
+        shield_value: u32,
+        actual_damage: u32, 
+    },
+    Heal {
+        turn: u32,
+        actor: String,
+        amount: u32,
+    },
+    SpellCast {
+        turn: u32,
+        actor: String,
+        target: String,
+        spell_name: String,
+    }
+}
+
+fn process_turn<R: Rng>(actor: &Neopet, other: &Neopet, action: &Action, turn_number: u32, rng: &mut R) -> Vec<BattleEvent> {
     match action {
         Action::Attack => {
+            let mut events = Vec::new();
+            
             let attack_roll = roll_d20(rng);
-            println!("attack roll {attack_roll}");
-            if attack_roll == 20 {
-                println!("positive crit!");
-            }
-            if attack_roll == 1 {
-                println!("negative crit!");
-            }
             let attack_val = (attack_roll as u32) + actor.base_attack;
-            println!("attack_val {attack_val}");
+            let attack_is_positive_crit = attack_roll == 20;
+            let attack_is_negative_crit = attack_roll == 1;
+            
+            events.push(BattleEvent::Roll {
+                turn: turn_number,
+                actor: actor.name.clone(),
+                dice: attack_roll,
+                final_value: attack_val,
+                is_positive_crit: attack_is_positive_crit,
+                is_negative_crit: attack_is_negative_crit,
+                goal: "attack".to_string(),
+            });
 
             let defense_roll = roll_d20(rng);
-            println!("defense roll {defense_roll}");
-            if defense_roll == 20 {
-                println!("positive crit!");
-            }
-            if defense_roll == 1 {
-                println!("negative crit!");
-            }
             let defense_val = (defense_roll as u32) + other.base_defense;
+            
+            events.push(BattleEvent::Roll {
+                turn: turn_number,
+                actor: other.name.clone(),
+                dice: defense_roll,
+                final_value: defense_val,
+                is_positive_crit: defense_roll == 20,
+                is_negative_crit: defense_roll == 1,
+                goal: "defense".to_string(),
+            });
+            
+            let mut actual_damage = attack_val.saturating_sub(defense_val);
+            if attack_is_positive_crit {
+                actual_damage *= 2;
+            }
+            if attack_is_negative_crit {
+                actual_damage = 0;
+            }
+            
+            events.push(BattleEvent::Attack {
+                turn: turn_number,
+                actor: actor.name.clone(),
+                target: other.name.clone(),
+                raw_damage: attack_val,
+                shield_value: defense_val,
+                actual_damage: actual_damage,
+            });
+            
+            events
         }
         Action::Heal => {
+            let mut events = Vec::new();
+            
             let heal_roll = roll_d20(rng);
-            println!("heal roll {heal_roll}");
+
+            let is_positive_crit = heal_roll == 20;
+            let is_negative_crit = heal_roll == 1;
             let mut heal_val = actor.heal_delta;
-            if heal_roll == 20 {
-                println!("positive crit!");
+            if is_positive_crit {
                 heal_val = heal_val * 2;
             }
-            if heal_roll == 1 {
-                println!("negative crit!");
+            if is_negative_crit {
                 heal_val = 0;
             }
-            println!("heal_val {heal_val}");
+            
+            events.push(BattleEvent::Roll {
+                turn: turn_number,
+                actor: actor.name.clone(),
+                dice: heal_roll,
+                final_value: heal_val,
+                is_positive_crit: is_positive_crit,
+                is_negative_crit: is_negative_crit,
+                goal: "heal".to_string(),
+            });
+            
+            events.push(BattleEvent::Heal {
+                turn: turn_number,
+                actor: actor.name.clone(),
+                amount: heal_val,
+            });
+            
+            events
         }
         Action::CastSpell(spell_index) => {
-            println!("Casting spell at index {}", spell_index);
-            if let Some(spell) = actor.spells.get(*spell_index) {
-                println!("Spell name: {}", spell.name);
+            let spell_name = if let Some(spell) = actor.spells.get(*spell_index) {
+                spell.name.clone()
             } else {
                 println!("Error: No spell found at index {}", spell_index);
-            }
+                "Unknown Spell".to_string()
+            };
+            
+            vec![BattleEvent::SpellCast {
+                turn: turn_number,
+                actor: actor.name.clone(),
+                target: other.name.clone(),
+                spell_name: spell_name,
+            }]
         }
     }
 }
@@ -67,13 +151,39 @@ fn roll_for_initiative<'a, R: Rng>(
     fighter1: &'a Neopet,
     fighter2: &'a Neopet,
     rng: &mut R,
-) -> (&'a Neopet, &'a Neopet) {
+) -> (Vec<BattleEvent>, &'a Neopet, &'a Neopet) {
     let mut fighter1_initiative = 0;
     let mut fighter2_initiative = 0;
+    let mut events = Vec::new();
+    let mut _roll_number = 0u32;
 
     while fighter1_initiative == fighter2_initiative {
-        fighter1_initiative = roll_d20(rng);
-        fighter2_initiative = roll_d20(rng);
+        _roll_number += 1;
+        
+        let roll1 = roll_d20(rng);
+        events.push(BattleEvent::Roll {
+            turn: 0, // Turn 0 for initiative phase
+            actor: fighter1.name.clone(),
+            dice: roll1,
+            final_value: roll1 as u32,
+            is_positive_crit: roll1 == 20,
+            is_negative_crit: roll1 == 1,
+            goal: "initiative".to_string(),
+        });
+        
+        let roll2 = roll_d20(rng);
+        events.push(BattleEvent::Roll {
+            turn: 0, // Turn 0 for initiative phase
+            actor: fighter2.name.clone(),
+            dice: roll2,
+            final_value: roll2 as u32,
+            is_positive_crit: roll2 == 20,
+            is_negative_crit: roll2 == 1,
+            goal: "initiative".to_string(),
+        });
+        
+        fighter1_initiative = roll1;
+        fighter2_initiative = roll2;
     }
 
     let mut first: &Neopet = fighter1;
@@ -83,7 +193,8 @@ fn roll_for_initiative<'a, R: Rng>(
         first = fighter2;
         second = fighter1;
     }
-    (first, second)
+    
+    (events, first, second)
 }
 
 fn choose_action<R: Rng>(neopet: &Neopet, rng: &mut R) -> Action {
@@ -106,22 +217,27 @@ fn choose_action<R: Rng>(neopet: &Neopet, rng: &mut R) -> Action {
     }
 }
 
-pub fn battle_loop<R: Rng>(fighter1: &Neopet, fighter2: &Neopet, rng: &mut R) {
-    let (first, second) = roll_for_initiative(fighter1, fighter2, rng);
-
+pub fn battle_loop<R: Rng>(fighter1: &Neopet, fighter2: &Neopet, rng: &mut R) -> Vec<BattleEvent> {
+    let (initiative_events, first, second) = roll_for_initiative(fighter1, fighter2, rng);
+    
     let mut battle_in_progress = true;
     let max_turns = 2000;
+    let mut all_events = initiative_events; // Start with initiative events
 
-    let mut turn = 0;
-    while battle_in_progress && turn < max_turns {
+    let mut turn = 1; // Start battle turns at 1
+    while battle_in_progress && turn <= max_turns {
         let first_action = choose_action(first, rng);
+        let events = process_turn(first, second, &first_action, turn, rng);
+        all_events.extend(events);
         turn += 1;
-        process_turn(first, second, &first_action, rng);
 
         let second_action = choose_action(second, rng);
+        let events = process_turn(second, first, &second_action, turn, rng);
+        all_events.extend(events);
         turn += 1;
-        process_turn(second, first, &second_action, rng);
     }
+    
+    all_events
 }
 
 #[cfg(test)]
@@ -232,7 +348,8 @@ mod tests {
         ];
 
         for i in 0..5 {
-            assert_eq!(roll_for_initiative(&fighter1, &fighter2, &mut rng), expected[i])
+            let (_, first, second) = roll_for_initiative(&fighter1, &fighter2, &mut rng);
+            assert_eq!((first, second), expected[i])
         }
     }
 }
