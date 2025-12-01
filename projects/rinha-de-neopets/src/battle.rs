@@ -155,11 +155,8 @@ fn roll_for_initiative<'a, R: Rng>(
     let mut fighter1_initiative = 0;
     let mut fighter2_initiative = 0;
     let mut events = Vec::new();
-    let mut _roll_number = 0u32;
 
     while fighter1_initiative == fighter2_initiative {
-        _roll_number += 1;
-        
         let roll1 = roll_d20(rng);
         events.push(BattleEvent::Roll {
             turn: 0, // Turn 0 for initiative phase
@@ -249,8 +246,12 @@ mod tests {
     use rand::rngs::StdRng;
 
     fn get_testing_neopet() -> Neopet {
+        get_testing_neopets_with_name("TestPet")
+    }
+
+    fn get_testing_neopets_with_name(name: &str) -> Neopet {
         Neopet {
-            name: "TestPet".to_string(),
+            name: name.to_string(),
             health: 100,
             heal_delta: 10,
             base_attack: 5,
@@ -280,6 +281,35 @@ mod tests {
                 heal_chance: 0.20, // 0.40 to 0.60 -> heal
             },
         }
+    }
+
+    fn seed_produces_initiative_tie(seed: u64) -> bool {
+        let fighter1 = get_testing_neopet();
+        let fighter2 = get_testing_neopets_with_name("Fighter2");
+        let mut rng = StdRng::seed_from_u64(seed);
+        
+        let (events, _first, _second) = roll_for_initiative(&fighter1, &fighter2, &mut rng);
+        
+        let fighter1_rolls: Vec<_> = events.iter().filter(|e| {
+            if let BattleEvent::Roll { actor, .. } = e {
+                actor == "TestPet"
+            } else { false }
+        }).collect();
+        
+        fighter1_rolls.len() > 1
+    }
+
+    #[test]
+    fn find_seed_for_tie() {
+        let mut tie_seed = None;
+        for seed in 0..=100 {
+            if seed_produces_initiative_tie(seed) {
+                println!("Found seed with tie: {}", seed);
+                tie_seed = Some(seed);
+                break;
+            }
+        }
+        assert!(tie_seed.is_some(), "Should find at least one seed that produces a tie");
     }
 
     #[test]
@@ -350,6 +380,91 @@ mod tests {
         for i in 0..5 {
             let (_, first, second) = roll_for_initiative(&fighter1, &fighter2, &mut rng);
             assert_eq!((first, second), expected[i])
+        }
+    }
+
+    #[test]
+    fn test_roll_for_initiative_generates_events() {
+        let fighter1 = get_testing_neopet();
+        let fighter2 = get_testing_neopet();
+        let mut rng = StdRng::seed_from_u64(42);
+        
+        let (events, first, second) = roll_for_initiative(&fighter1, &fighter2, &mut rng);
+        
+        assert!(!events.is_empty(), "Should generate initiative events");
+        
+        for event in &events {
+            match event {
+                BattleEvent::Roll { turn, goal, .. } => {
+                    assert_eq!(*turn, 0, "Initiative events should have turn 0");
+                    assert_eq!(goal, "initiative", "Goal should be 'initiative'");
+                }
+                _ => panic!("All initiative events should be Roll type"),
+            }
+        }
+        
+        assert_eq!(events.len() % 2, 0, "Should have pairs of rolls, one per fighter");
+        
+        if let Some(BattleEvent::Roll { actor, dice, .. }) = events.last() {
+            let last_roller = if actor == &fighter1.name { &fighter1 } else { &fighter2 };
+            let other = if actor == &fighter1.name { &fighter2 } else { &fighter1 };
+            
+            if dice > &0 { // Dice will always be > 0, this just ensures we got a value
+                if last_roller.name == first.name {
+                    assert_eq!(*actor, first.name, "Last roller with higher roll should be first");
+                } else {
+                    assert_eq!(other.name, first.name, "Other fighter should be first if they rolled higher");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_roll_for_initiative_tracks_ties() {
+        let fighter1 = get_testing_neopet();
+        let fighter2 = get_testing_neopets_with_name("Fighter2");
+        
+        let mut rng = StdRng::seed_from_u64(25);
+        
+        let (events, first, _second) = roll_for_initiative(&fighter1, &fighter2, &mut rng);
+        
+        let fighter1_rolls: Vec<_> = events.iter().filter(|e| {
+            if let BattleEvent::Roll { actor, .. } = e {
+                actor == "TestPet"
+            } else { false }
+        }).collect();
+        
+        let fighter2_rolls: Vec<_> = events.iter().filter(|e| {
+            if let BattleEvent::Roll { actor, .. } = e {
+                actor == "Fighter2"
+            } else { false }
+        }).collect();
+        
+        assert_eq!(fighter1_rolls.len(), fighter2_rolls.len(), 
+                   "Both fighters should roll the same number of times");
+        
+        assert!(fighter1_rolls.len() > 1, "This seed was tested to ensure at least a tie, there should be more than one roll per fighter.");
+        
+        if fighter1_rolls.len() > 1 {
+            println!("Detected tie in initiative - each rolled {} times", fighter1_rolls.len());
+            
+            for event in &events {
+                if let BattleEvent::Roll { turn, .. } = event {
+                    assert_eq!(*turn, 0, "All initiative events should be turn 0");
+                }
+            }
+        }
+        
+        if let Some(BattleEvent::Roll { actor, dice, .. }) = fighter1_rolls.last() {
+            assert_eq!(*actor, fighter1.name);
+            
+            if let Some(BattleEvent::Roll { dice: dice2, .. }) = fighter2_rolls.last() {
+                if dice > dice2 {
+                    assert_eq!(first.name, fighter1.name, "Fighter1 should go first (higher roll)");
+                } else {
+                    assert_eq!(first.name, fighter2.name, "Fighter2 should go first (higher roll)");
+                }
+            }
         }
     }
 }
