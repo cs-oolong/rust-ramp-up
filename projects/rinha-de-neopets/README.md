@@ -3,6 +3,19 @@
 cargo llvm-cov --html --open
 ```
 
+## Checkpoint
+
+Today I implemented the battle events, the neopets and some functions.
+What is still missing:
+- Test coverage for the process_turn function at battle.rs.
+- Maybe split battle.rs, it's getting big, perhaps split RNG related stuff somewhere else.
+- Actually change the state of the fighters. Update the HP when damage is taken, or when heal is applied.
+- Stop battle if a fighter reaches zero HP before the maximum number of turns.
+- Beautiful display for the battle events.
+- Generate pairs of Neopets, so that we have a "live battles" list.
+- Let the user pick which battle to watch.
+- The actual betting, odds, cash out, balance, profit etc. system. 
+
 ## TODOs & Technical Debt
 
 ### 1. Runtime Validation for Programmatically Created Neopets
@@ -57,4 +70,8 @@ let invalid_neopet = Neopet {
 
 Same as the programmatically created neopets issue, but for BattleEvents. For example, a Roll can't be positive crit and negative crit at the same time.
 
+
+## Extra - Only if there is time
+
+### 1. ASCII art & animations for the battle display
 ---
