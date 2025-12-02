@@ -12,21 +12,6 @@ enum Action {
     Heal,
 }
 
-enum BattleCompletion {
-    FighterZeroHealth,
-    MaxTurnsReached,
-    Ongoing,
-}
-
-struct BattleState {
-    turn: u32,
-    neopet1: String,
-    neopet1_health: u32,
-    neopet2: String,
-    neopet2_health: u32,
-    completion: BattleCompletion,
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum BattleEvent {
     Roll {
@@ -232,12 +217,11 @@ fn choose_action<R: Rng>(neopet: &Neopet, rng: &mut R) -> Action {
 pub fn battle_loop<R: Rng>(fighter1: &Neopet, fighter2: &Neopet, rng: &mut R) -> Vec<BattleEvent> {
     let (initiative_events, first, second) = roll_for_initiative(fighter1, fighter2, rng);
     
-    let mut battle_in_progress = true;
     let max_turns = 2000;
     let mut all_events = initiative_events; // Start with initiative events
 
     let mut turn = 1; // Start battle turns at 1
-    while battle_in_progress && turn <= max_turns {
+    while turn <= max_turns {
         let first_action = choose_action(first, rng);
         let events = process_turn(first, second, &first_action, turn, rng);
         all_events.extend(events);
