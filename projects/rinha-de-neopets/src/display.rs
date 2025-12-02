@@ -15,7 +15,6 @@ pub struct BattleDisplayConfig {
     pub spell_delay_ms: u64,
     pub use_spinners: bool,
     pub streaming_effect: bool,
-    pub health_bar_updates: bool,
 }
 
 impl Default for BattleDisplayConfig {
@@ -27,7 +26,6 @@ impl Default for BattleDisplayConfig {
             spell_delay_ms: 500,
             use_spinners: true,
             streaming_effect: true,
-            health_bar_updates: true,
         }
     }
 }
@@ -43,17 +41,6 @@ pub struct BattleDisplay {
 }
 
 impl BattleDisplay {
-    pub fn new(fighter1: &Neopet, fighter2: &Neopet) -> Self {
-        Self {
-            fighter1_name: fighter1.name.clone(),
-            fighter2_name: fighter2.name.clone(),
-            fighter1_max_health: fighter1.health,
-            fighter2_max_health: fighter2.health,
-            config: BattleDisplayConfig::default(),
-            multi_progress: None,
-        }
-    }
-    
     pub fn with_config(fighter1: &Neopet, fighter2: &Neopet, config: BattleDisplayConfig) -> Self {
         Self {
             fighter1_name: fighter1.name.clone(),
@@ -75,6 +62,13 @@ impl BattleDisplay {
             return;
         }
         
+        // Use the configured base delay if it's shorter than requested duration
+        let actual_duration = if duration_ms > self.config.base_delay_ms {
+            duration_ms
+        } else {
+            self.config.base_delay_ms
+        };
+        
         if use_spinner && self.config.use_spinners {
             let pb = self.multi_progress.as_ref().unwrap().add(
                 ProgressBar::new_spinner()
@@ -87,7 +81,7 @@ impl BattleDisplay {
             );
             pb.enable_steady_tick(Duration::from_millis(100));
             
-            let steps = (duration_ms / 100) as u32;
+            let steps = (actual_duration / 100) as u32;
             for i in 0..steps {
                 pb.set_position(i as u64);
                 thread::sleep(Duration::from_millis(100));
@@ -96,7 +90,7 @@ impl BattleDisplay {
             pb.finish_and_clear();
         } else {
             // Simple delay without spinner
-            thread::sleep(Duration::from_millis(duration_ms));
+            thread::sleep(Duration::from_millis(actual_duration));
         }
     }
     
@@ -314,7 +308,7 @@ impl BattleDisplay {
         
         // Extra suspense for critical hits
         if is_positive_crit || is_negative_crit {
-            thread::sleep(Duration::from_millis(400));
+            thread::sleep(Duration::from_millis(self.config.critical_delay_ms));
             print!(" {} ", "🎯".bright_yellow());
             std::io::Write::flush(&mut std::io::stdout()).unwrap();
             thread::sleep(Duration::from_millis(200));
@@ -584,239 +578,13 @@ impl BattleDisplay {
             percentage_text
         );
     }
-    
-    /// Display a single battle event with appropriate styling
-    fn display_single_event(&self, event: &BattleEvent) {
-        match event {
-            BattleEvent::Roll { actor, dice, final_value, is_positive_crit, is_negative_crit, goal, .. } => {
-                display_roll_event(actor, *dice, *final_value, *is_positive_crit, *is_negative_crit, goal);
-            }
-            BattleEvent::Attack { actor, target, actual_damage, .. } => {
-                display_attack_event(actor, target, *actual_damage);
-            }
-            BattleEvent::Heal { actor, amount, .. } => {
-                display_heal_event(actor, *amount);
-            }
-            BattleEvent::SpellCast { actor, target, spell_name, .. } => {
-                display_spell_event(actor, target, spell_name);
-            }
-        }
-    }
 }
 
-/// Simple function to display battle events without animations (for testing/comparison)
-pub fn display_battle_events_simple(events: &[BattleEvent]) {
-    if events.is_empty() {
-        println!("{}", "No battle events to display.".dimmed());
-        return;
-    }
 
-    // Group events by turn for better organization
-    let mut events_by_turn: HashMap<u32, Vec<&BattleEvent>> = HashMap::new();
-    for event in events {
-        let turn = match event {
-            BattleEvent::Roll { turn, .. } => *turn,
-            BattleEvent::Attack { turn, .. } => *turn,
-            BattleEvent::Heal { turn, .. } => *turn,
-            BattleEvent::SpellCast { turn, .. } => *turn,
-        };
-        events_by_turn.entry(turn).or_insert_with(Vec::new).push(event);
-    }
 
-    // Sort turns (0 is initiative phase)
-    let mut turns: Vec<u32> = events_by_turn.keys().cloned().collect();
-    turns.sort_unstable();
 
-    // Display header
-    println!("{}", "═".repeat(60).bright_black());
-    let battle_header = "⚔️  BATTLE BEGINS ⚔️".bright_yellow().bold();
-    let centered_header = center_text(&battle_header.to_string(), 60);
-    println!("{}", centered_header);
-    println!("{}", "═".repeat(60).bright_black());
 
-    // Display events grouped by turn
-    for turn in turns {
-        let turn_events = &events_by_turn[&turn];
-        
-        if turn == 0 {
-            // Initiative phase
-            println!("\n{}", "🏁 INITIATIVE PHASE".bright_cyan().bold());
-        } else {
-            display_turn_header_simple(turn);
-        }
 
-        for event in turn_events {
-            display_single_event_simple(event);
-        }
-
-        // Add spacing between turns (except after initiative)
-        if turn != 0 {
-            println!();
-        }
-    }
-
-    // Display footer
-    println!("{}", "═".repeat(60).bright_black());
-}
-
-/// Display a turn header with nice formatting (simple version)
-fn display_turn_header_simple(turn: u32) {
-    let header = format!(" TURN {} ", turn);
-    let padding = "─".repeat((60 - header.len()) / 2);
-    let line = format!("{}{}{}", padding, header.bright_white().bold(), padding);
-    
-    // If odd length, add one more dash
-    let line = if line.len() < 60 {
-        format!("{}", line)
-    } else {
-        line
-    };
-    
-    println!("\n{}", line.bright_blue());
-}
-
-/// Display a single battle event (simple version)
-fn display_single_event_simple(event: &BattleEvent) {
-    match event {
-        BattleEvent::Roll { actor, dice, final_value, is_positive_crit, is_negative_crit, goal, .. } => {
-            display_roll_event(actor, *dice, *final_value, *is_positive_crit, *is_negative_crit, goal);
-        }
-        BattleEvent::Attack { actor, target, actual_damage, .. } => {
-            display_attack_event(actor, target, *actual_damage);
-        }
-        BattleEvent::Heal { actor, amount, .. } => {
-            display_heal_event(actor, *amount);
-        }
-        BattleEvent::SpellCast { actor, target, spell_name, .. } => {
-            display_spell_event(actor, target, spell_name);
-        }
-    }
-}
-
-/// Display dice roll events with special styling for critical hits
-fn display_roll_event(actor: &str, dice: u8, final_value: u32, is_positive_crit: bool, is_negative_crit: bool, goal: &str) {
-    let dice_display = if is_positive_crit {
-        format!("{}", dice).on_bright_yellow().red().bold()
-    } else if is_negative_crit {
-        format!("{}", dice).on_red().white().bold()
-    } else {
-        dice.to_string().normal()
-    };
-
-    let goal_icon = match goal {
-        "attack" => "⚔️",
-        "defense" => "🛡️",
-        "heal" => "💚",
-        "initiative" => "🎲",
-        _ => "🎲",
-    };
-
-    let actor_colored = actor.bright_cyan();
-    let goal_colored = goal.bright_white();
-    let final_value_colored = if is_positive_crit {
-        final_value.to_string().bright_yellow().bold()
-    } else if is_negative_crit {
-        final_value.to_string().bright_red().bold()
-    } else {
-        final_value.to_string().normal()
-    };
-
-    println!("  {} {} rolls {} for {}: {} = {}", 
-        goal_icon,
-        actor_colored,
-        goal_colored,
-        dice_display,
-        "🎯".bright_yellow(),
-        final_value_colored
-    );
-
-    // Add special message for critical hits
-    if is_positive_crit {
-        println!("     {}", "⭐ NATURAL 20! Critical Success! ⭐".bright_yellow().bold());
-    } else if is_negative_crit {
-        println!("     {}", "💥 NATURAL 1! Critical Failure! 💥".bright_red().bold());
-    }
-}
-
-/// Display attack events with damage information
-fn display_attack_event(actor: &str, target: &str, actual_damage: u32) {
-    let actor_colored = actor.bright_blue().bold();
-    let target_colored = target.bright_red().bold();
-
-    if actual_damage == 0 {
-        println!("  ⚔️  {} attacks {} but the attack is {}", 
-            actor_colored,
-            target_colored,
-            "BLOCKED!".bright_white().on_red()
-        );
-    } else {
-        let damage_colored = actual_damage.to_string().bright_red().bold();
-        println!("  ⚔️  {} hits {} for {} damage", 
-            actor_colored,
-            target_colored,
-            damage_colored
-        );
-    }
-}
-
-/// Display healing events
-fn display_heal_event(actor: &str, amount: u32) {
-    let actor_colored = actor.bright_green().bold();
-    let amount_colored = amount.to_string().bright_green().bold();
-    
-    println!("  💚 {} heals for {} HP", actor_colored, amount_colored);
-}
-
-/// Display spell casting events
-fn display_spell_event(actor: &str, target: &str, spell_name: &str) {
-    let actor_colored = actor.bright_magenta().bold();
-    let target_colored = target.bright_red().bold();
-    let spell_colored = spell_name.bright_yellow().italic();
-    
-    println!("  ✨ {} casts {} on {}", actor_colored, spell_colored, target_colored);
-}
-
-/// Battle state that can be passed to display for showing current status
-#[derive(Debug, Clone)]
-pub struct BattleState {
-    pub fighter1_name: String,
-    pub fighter2_name: String,
-    pub fighter1_current_hp: u32,
-    pub fighter2_current_hp: u32,
-    pub fighter1_max_hp: u32,
-    pub fighter2_max_hp: u32,
-    pub current_turn: u32,
-}
-
-impl BattleState {
-    pub fn new(fighter1: &Neopet, fighter2: &Neopet) -> Self {
-        Self {
-            fighter1_name: fighter1.name.clone(),
-            fighter2_name: fighter2.name.clone(),
-            fighter1_current_hp: fighter1.health,
-            fighter2_current_hp: fighter2.health,
-            fighter1_max_hp: fighter1.health,
-            fighter2_max_hp: fighter2.health,
-            current_turn: 0,
-        }
-    }
-    
-    pub fn display_current_status(&self) {
-        println!("\n{}", format!(" Turn {} Status ", self.current_turn).bright_white().bold());
-        println!("{}", "─".repeat(50).bright_black());
-        
-        let display = BattleDisplay {
-            fighter1_name: self.fighter1_name.clone(),
-            fighter2_name: self.fighter2_name.clone(),
-            fighter1_max_health: self.fighter1_max_hp,
-            fighter2_max_health: self.fighter2_max_hp,
-            config: BattleDisplayConfig::default(),
-            multi_progress: None,
-        };
-        
-        display.display_health_bars_internal(self.fighter1_current_hp, self.fighter2_current_hp);
-    }
-}
 
 /// Center text helper function
 fn center_text(text: &str, width: usize) -> String {
@@ -943,11 +711,9 @@ mod tests {
             },
         };
         
-        let mut state = BattleState::new(&fighter1, &fighter2);
-        state.current_turn = 5;
-        state.fighter1_current_hp = 75;
-        state.fighter2_current_hp = 60;
-        state.display_current_status();
+        // Test health bar display directly
+        let display = BattleDisplay::with_config(&fighter1, &fighter2, BattleDisplayConfig::default());
+        display.display_health_bars(75, 60);
     }
     
     #[test]
