@@ -388,7 +388,7 @@ mod tests {
         let fighter2 = get_testing_neopet();
         let mut rng = StdRng::seed_from_u64(42);
         
-        let (events, first, second) = roll_for_initiative(&fighter1, &fighter2, &mut rng);
+        let (events, first, _unused_second) = roll_for_initiative(&fighter1, &fighter2, &mut rng);
         
         assert!(!events.is_empty(), "Should generate initiative events");
         
@@ -472,8 +472,8 @@ mod tests {
 mod process_turn_tests {
     use super::*;
     use std::cell::Cell;
-    use rand::distr::uniform::{SampleUniform, SampleRange};
-    use rand::distr::{Distribution, StandardUniform};
+    
+    
     use rand::RngCore;
 
     /// Fixed RNG for testing - returns pre-programmed dice values in sequence
