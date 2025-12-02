@@ -15,7 +15,12 @@ fn main() {
     
     let events = battle_loop(fighter1, fighter2, &mut rand::rng());
     
-    // Create and use the enhanced battle display
-    let mut battle_display = BattleDisplay::new(fighter1, fighter2);
-    battle_display.display_battle_events(&events);
+    // Create battle display (stateless - just for presentation)
+    let battle_display = BattleDisplay::new(fighter1, fighter2);
+    
+    // Display the battle with initial health state
+    battle_display.display_battle_events(&events, Some((fighter1.health, fighter2.health)));
+    
+    // Display battle summary (calculated from events, not from state)
+    battle_display.display_battle_summary(&events);
 }
