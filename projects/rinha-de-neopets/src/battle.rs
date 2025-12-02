@@ -217,7 +217,7 @@ fn choose_action<R: Rng>(neopet: &Neopet, rng: &mut R) -> Action {
 pub fn battle_loop<R: Rng>(fighter1: &Neopet, fighter2: &Neopet, rng: &mut R) -> Vec<BattleEvent> {
     let (initiative_events, first, second) = roll_for_initiative(fighter1, fighter2, rng);
     
-    let max_turns = 5;
+    let max_turns = 20;
     let mut all_events = initiative_events; // Start with initiative events
 
     let mut turn = 1; // Start battle turns at 1

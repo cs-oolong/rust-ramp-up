@@ -21,9 +21,9 @@ impl Default for BattleDisplayConfig {
     fn default() -> Self {
         Self {
             enable_delays: true,
-            base_delay_ms: 300,
-            critical_delay_ms: 800,
-            spell_delay_ms: 500,
+            base_delay_ms: 600,      // Increased from 300ms
+            critical_delay_ms: 1200, // Increased from 800ms
+            spell_delay_ms: 800,     // Increased from 500ms
             use_spinners: true,
             streaming_effect: true,
         }
@@ -94,22 +94,38 @@ impl BattleDisplay {
         }
     }
     
-    /// Create a dramatic entrance effect
+    /// Create a dramatic entrance effect with spinner
     fn dramatic_entrance(&self) {
         if !self.config.enable_delays {
             return;
         }
         
         println!();
-        let entrance_text = "⚔️  BATTLE PREPARING ⚔️";
         
-        // Typewriter effect
-        for (_i, ch) in entrance_text.chars().enumerate() {
-            print!("{}", ch.to_string().bright_yellow().bold());
-            std::io::Write::flush(&mut std::io::stdout()).unwrap();
-            thread::sleep(Duration::from_millis(80));
+        if self.config.use_spinners {
+            // Spinner approach instead of typewriter
+            let pb = self.multi_progress.as_ref().unwrap().add(
+                ProgressBar::new_spinner()
+                    .with_style(
+                        ProgressStyle::default_spinner()
+                            .template("{spinner:.yellow} {msg}")
+                            .unwrap()
+                    )
+                    .with_message("⚔️  BATTLE PREPARING ⚔️".bright_yellow().bold().to_string())
+            );
+            pb.enable_steady_tick(Duration::from_millis(100));
+            
+            let steps = 25; // Show spinner for ~2.5 seconds
+            for i in 0..steps {
+                pb.set_position(i as u64);
+                thread::sleep(Duration::from_millis(100));
+            }
+            
+            pb.finish_and_clear();
+        } else {
+            // Simple display without spinner
+            println!("{}", "⚔️  BATTLE PREPARING ⚔️".bright_yellow().bold());
         }
-        println!();
         
         // Dramatic pause
         self.suspenseful_delay(500, "Fighters taking positions...", true);
@@ -163,13 +179,13 @@ impl BattleDisplay {
                 self.animate_turn_header(turn);
             }
 
-            // Stream events with delays and effects
+            // Display events with spinner suspense (no streaming text)
             for (i, event) in turn_events.iter().enumerate() {
-                self.stream_event(event, i == 0);
+                self.display_event_with_spinner(event, i == 0);
                 
                 // Small delay between events in the same turn
                 if i < turn_events.len() - 1 {
-                    thread::sleep(Duration::from_millis(150));
+                    thread::sleep(Duration::from_millis(500)); // Increased from 300ms // Increased from 150ms
                 }
             }
 
@@ -188,20 +204,32 @@ impl BattleDisplay {
         self.animate_footer();
     }
     
-    /// Animate the battle header
+    /// Animate the battle header with spinner (no streaming text)
     fn animate_header(&self) {
         println!("{}", "═".repeat(70).bright_black());
         
-        if self.config.streaming_effect {
-            let battle_header = "⚔️  BATTLE BEGINS ⚔️";
-            print!("  ");
-            for ch in battle_header.chars() {
-                print!("{}", ch.to_string().bright_yellow().bold());
-                std::io::Write::flush(&mut std::io::stdout()).unwrap();
-                thread::sleep(Duration::from_millis(60));
+        if self.config.use_spinners {
+            // Spinner approach for battle header
+            let pb = self.multi_progress.as_ref().unwrap().add(
+                ProgressBar::new_spinner()
+                    .with_style(
+                        ProgressStyle::default_spinner()
+                            .template("{spinner:.yellow} {msg}")
+                            .unwrap()
+                    )
+                    .with_message("⚔️  BATTLE BEGINS ⚔️".bright_yellow().bold().to_string())
+            );
+            pb.enable_steady_tick(Duration::from_millis(100));
+            
+            let steps = 20; // Show spinner for ~2.0 seconds
+            for i in 0..steps {
+                pb.set_position(i as u64);
+                thread::sleep(Duration::from_millis(100));
             }
-            println!();
+            
+            pb.finish_and_clear();
         } else {
+            // Simple display without spinner
             let battle_header = "⚔️  BATTLE BEGINS ⚔️".bright_yellow().bold();
             let centered_header = center_text(&battle_header.to_string(), 70);
             println!("{}", centered_header);
@@ -210,68 +238,93 @@ impl BattleDisplay {
         println!("{}", "═".repeat(70).bright_black());
     }
     
-    /// Animate initiative phase
+    /// Animate initiative phase with spinner
     fn animate_initiative_phase(&self) {
         println!("\n{}", "🏁 INITIATIVE PHASE".bright_cyan().bold());
         
-        if self.config.streaming_effect {
+        if self.config.use_spinners {
+            let pb = self.multi_progress.as_ref().unwrap().add(
+                ProgressBar::new_spinner()
+                    .with_style(
+                        ProgressStyle::default_spinner()
+                            .template("{spinner:.cyan} {msg}")
+                            .unwrap()
+                    )
+                    .with_message("Rolling for initiative...".to_string())
+            );
+            pb.enable_steady_tick(Duration::from_millis(100));
+            
+            let steps = 12; // Show spinner for ~1.2 seconds
+            for i in 0..steps {
+                pb.set_position(i as u64);
+                thread::sleep(Duration::from_millis(100));
+            }
+            
+            pb.finish_and_clear();
+        } else {
             self.suspenseful_delay(300, "Rolling for initiative...", true);
         }
     }
     
-    /// Animate turn header with suspense
+    /// Animate turn header with spinner (no streaming text)
     fn animate_turn_header(&self, turn: u32) {
         let header = format!(" TURN {} ", turn);
         let padding = "─".repeat((70 - header.len()) / 2);
         
-        if self.config.streaming_effect {
-            print!("\n  ");
-            for ch in padding.chars() {
-                print!("{}", ch.to_string().bright_blue());
-                std::io::Write::flush(&mut std::io::stdout()).unwrap();
-                thread::sleep(Duration::from_millis(20));
+        if self.config.use_spinners {
+            // Spinner approach for turn header
+            let pb = self.multi_progress.as_ref().unwrap().add(
+                ProgressBar::new_spinner()
+                    .with_style(
+                        ProgressStyle::default_spinner()
+                            .template("{spinner:.blue} {msg}")
+                            .unwrap()
+                    )
+                    .with_message(format!("Preparing Turn {}...", turn))
+            );
+            pb.enable_steady_tick(Duration::from_millis(100));
+            
+            let steps = 8; // Show spinner for ~0.8 seconds
+            for i in 0..steps {
+                pb.set_position(i as u64);
+                thread::sleep(Duration::from_millis(100));
             }
             
-            print!("{}", header.bright_white().bold());
-            for ch in padding.chars() {
-                print!("{}", ch.to_string().bright_blue());
-                std::io::Write::flush(&mut std::io::stdout()).unwrap();
-                thread::sleep(Duration::from_millis(20));
-            }
-            println!();
-        } else {
-            let line = format!("{}{}{}", padding, header.bright_white().bold(), padding);
-            let line = if line.len() < 70 {
-                format!("{}{}", line, "─".repeat(70 - line.len()))
-            } else {
-                line
-            };
-            println!("\n{}", line.bright_blue());
+            pb.finish_and_clear();
         }
+
+        // Print the complete header instantly
+        let line = format!("{}{}{}", padding, header.bright_white().bold(), padding);
+        let line = if line.len() < 70 {
+            format!("{}{}", line, "─".repeat(70 - line.len()))
+        } else {
+            line
+        };
+        println!("\n{}", line.bright_blue());
     }
     
-    /// Stream a single event with dramatic effect
-    fn stream_event(&self, event: &BattleEvent, is_first: bool) {
+    /// Display a single event with spinner suspense (no streaming text)
+    fn display_event_with_spinner(&self, event: &BattleEvent, is_first: bool) {
         match event {
             BattleEvent::Roll { actor, dice, final_value, is_positive_crit, is_negative_crit, goal, .. } => {
-                self.stream_roll_event(actor, *dice, *final_value, *is_positive_crit, *is_negative_crit, goal, is_first);
+                self.display_roll_with_spinner(actor, *dice, *final_value, *is_positive_crit, *is_negative_crit, goal, is_first);
             }
             BattleEvent::Attack { actor, target, actual_damage, .. } => {
-                self.stream_attack_event(actor, target, *actual_damage);
+                self.display_attack_with_spinner(actor, target, *actual_damage);
             }
             BattleEvent::Heal { actor, amount, .. } => {
-                self.stream_heal_event(actor, *amount);
+                self.display_heal_with_spinner(actor, *amount);
             }
             BattleEvent::SpellCast { actor, target, spell_name, .. } => {
-                self.stream_spell_event(actor, target, spell_name);
+                self.display_spell_with_spinner(actor, target, spell_name);
             }
         }
     }
     
-    /// Stream dice roll event with suspense
-    fn stream_roll_event(&self, actor: &str, dice: u8, final_value: u32, is_positive_crit: bool, is_negative_crit: bool, goal: &str, is_first: bool) {
+    /// Display dice roll event with spinner suspense (no streaming text)
+    fn display_roll_with_spinner(&self, actor: &str, dice: u8, final_value: u32, is_positive_crit: bool, is_negative_crit: bool, goal: &str, is_first: bool) {
         if !is_first {
-            thread::sleep(Duration::from_millis(200));
+            thread::sleep(Duration::from_millis(400)); // Increased from 200ms
         }
         
         let goal_icon = match goal {
@@ -282,19 +335,53 @@ impl BattleDisplay {
             _ => "🎲",
         };
 
-        print!("  {} ", goal_icon);
-        std::io::Write::flush(&mut std::io::stdout()).unwrap();
-        thread::sleep(Duration::from_millis(100));
-        
-        print!("{}", actor.bright_cyan());
-        std::io::Write::flush(&mut std::io::stdout()).unwrap();
-        thread::sleep(Duration::from_millis(100));
-        
-        print!(" rolls {} for ", goal.bright_white());
-        std::io::Write::flush(&mut std::io::stdout()).unwrap();
-        thread::sleep(Duration::from_millis(100));
-        
-        // Dramatic dice reveal
+        // Determine spinner message based on goal
+        let spinner_msg = match goal {
+            "attack" => "Rolling attack dice...",
+            "defense" => "Rolling defense dice...",
+            "heal" => "Rolling heal dice...",
+            "initiative" => "Rolling initiative...",
+            _ => "Rolling dice...",
+        };
+
+        // Show spinner for suspense
+        if self.config.use_spinners {
+            let pb = self.multi_progress.as_ref().unwrap().add(
+                ProgressBar::new_spinner()
+                    .with_style(
+                        ProgressStyle::default_spinner()
+                            .template("{spinner:.cyan} {msg}")
+                            .unwrap()
+                    )
+                    .with_message(spinner_msg.to_string())
+            );
+            pb.enable_steady_tick(Duration::from_millis(100));
+            
+            // Show spinner for different durations based on critical hits
+            let spin_duration = if is_positive_crit || is_negative_crit {
+                self.config.critical_delay_ms / 2
+            } else {
+                self.config.base_delay_ms / 2
+            };
+            
+            let steps = (spin_duration / 100) as u32;
+            for i in 0..steps {
+                pb.set_position(i as u64);
+                thread::sleep(Duration::from_millis(100));
+            }
+            
+            pb.finish_and_clear();
+        } else {
+            // Simple delay without spinner
+            let delay = if is_positive_crit || is_negative_crit {
+                self.config.critical_delay_ms / 2
+            } else {
+                self.config.base_delay_ms / 2
+            };
+            thread::sleep(Duration::from_millis(delay));
+        }
+
+        // Now print the complete event instantly
         let dice_display = if is_positive_crit {
             format!("{}", dice).on_bright_yellow().red().bold()
         } else if is_negative_crit {
@@ -302,124 +389,151 @@ impl BattleDisplay {
         } else {
             dice.to_string().normal()
         };
-        
-        print!("{}", dice_display);
-        std::io::Write::flush(&mut std::io::stdout()).unwrap();
-        
-        // Extra suspense for critical hits
-        if is_positive_crit || is_negative_crit {
-            thread::sleep(Duration::from_millis(self.config.critical_delay_ms));
-            print!(" {} ", "🎯".bright_yellow());
-            std::io::Write::flush(&mut std::io::stdout()).unwrap();
-            thread::sleep(Duration::from_millis(200));
-            println!("= {}", final_value.to_string().bright_yellow().bold());
-            
-            // Critical hit announcement
-            if is_positive_crit {
-                thread::sleep(Duration::from_millis(300));
-                println!("     {}", "⭐ NATURAL 20! Critical Success! ⭐".bright_yellow().bold());
-            } else if is_negative_crit {
-                thread::sleep(Duration::from_millis(300));
-                println!("     {}", "💥 NATURAL 1! Critical Failure! 💥".bright_red().bold());
+
+        println!("  {} {} rolls {} for {}: {} = {}", 
+            goal_icon,
+            actor.bright_cyan(),
+            goal.bright_white(),
+            dice_display,
+            "🎯".bright_yellow(),
+            if is_positive_crit || is_negative_crit {
+                final_value.to_string().bright_yellow().bold()
+            } else {
+                final_value.to_string().normal()
             }
-        } else {
-            thread::sleep(Duration::from_millis(200));
-            print!(" {} ", "🎯".bright_yellow());
-            std::io::Write::flush(&mut std::io::stdout()).unwrap();
-            thread::sleep(Duration::from_millis(150));
-            println!("= {}", final_value.to_string().normal());
+        );
+
+        // Critical hit announcement
+        if is_positive_crit {
+            println!("     {}", "⭐ NATURAL 20! Critical Success! ⭐".bright_yellow().bold());
+        } else if is_negative_crit {
+            println!("     {}", "💥 NATURAL 1! Critical Failure! 💥".bright_red().bold());
         }
     }
     
-    /// Stream attack event with impact
-    fn stream_attack_event(&self, actor: &str, target: &str, actual_damage: u32) {
-        thread::sleep(Duration::from_millis(300));
+    /// Display attack event with spinner suspense (no streaming text)
+    fn display_attack_with_spinner(&self, actor: &str, target: &str, actual_damage: u32) {
+        thread::sleep(Duration::from_millis(500)); // Increased from 300ms
         
-        print!("  ⚔️  ");
-        std::io::Write::flush(&mut std::io::stdout()).unwrap();
-        thread::sleep(Duration::from_millis(100));
-        
-        print!("{}", actor.bright_blue().bold());
-        std::io::Write::flush(&mut std::io::stdout()).unwrap();
-        
+        // Show spinner for suspense
+        if self.config.use_spinners {
+            let pb = self.multi_progress.as_ref().unwrap().add(
+                ProgressBar::new_spinner()
+                    .with_style(
+                        ProgressStyle::default_spinner()
+                            .template("{spinner:.red} {msg}")
+                            .unwrap()
+                    )
+                    .with_message("Preparing attack...".to_string())
+            );
+            pb.enable_steady_tick(Duration::from_millis(100));
+            
+            let steps = ((self.config.base_delay_ms * 3/4) / 100) as u32; // 75% of base delay
+            for i in 0..steps {
+                pb.set_position(i as u64);
+                thread::sleep(Duration::from_millis(100));
+            }
+            
+            pb.finish_and_clear();
+        } else {
+            thread::sleep(Duration::from_millis(self.config.base_delay_ms));
+        }
+
+        // Now print the complete event instantly
+        let actor_colored = actor.bright_blue().bold();
+        let target_colored = target.bright_red().bold();
+
         if actual_damage == 0 {
-            thread::sleep(Duration::from_millis(200));
-            print!(" attacks {} but the attack is ", target.bright_red().bold());
-            std::io::Write::flush(&mut std::io::stdout()).unwrap();
-            thread::sleep(Duration::from_millis(300));
-            println!("{}", "BLOCKED!".bright_white().on_red());
+            println!("  ⚔️  {} attacks {} but the attack is {}", 
+                actor_colored,
+                target_colored,
+                "BLOCKED!".bright_white().on_red()
+            );
         } else {
-            thread::sleep(Duration::from_millis(200));
-            print!(" hits {} for ", target.bright_red().bold());
-            std::io::Write::flush(&mut std::io::stdout()).unwrap();
-            thread::sleep(Duration::from_millis(200));
-            println!("{} damage", actual_damage.to_string().bright_red().bold());
+            println!("  ⚔️  {} hits {} for {} damage", 
+                actor_colored,
+                target_colored,
+                actual_damage.to_string().bright_red().bold()
+            );
         }
     }
     
-    /// Stream healing event with warmth
-    fn stream_heal_event(&self, actor: &str, amount: u32) {
-        thread::sleep(Duration::from_millis(300));
+    /// Display healing event with spinner suspense (no streaming text)
+    fn display_heal_with_spinner(&self, actor: &str, amount: u32) {
+        thread::sleep(Duration::from_millis(500)); // Increased from 300ms
         
-        print!("  💚 ");
-        std::io::Write::flush(&mut std::io::stdout()).unwrap();
-        thread::sleep(Duration::from_millis(150));
-        
-        print!("{}", actor.bright_green().bold());
-        std::io::Write::flush(&mut std::io::stdout()).unwrap();
-        thread::sleep(Duration::from_millis(150));
-        
-        print!(" heals for ");
-        std::io::Write::flush(&mut std::io::stdout()).unwrap();
-        thread::sleep(Duration::from_millis(150));
-        
-        println!("{} HP", amount.to_string().bright_green().bold());
-    }
-    
-    /// Stream spell casting event with magic
-    fn stream_spell_event(&self, actor: &str, target: &str, spell_name: &str) {
-        if self.config.streaming_effect {
-            self.suspenseful_delay(self.config.spell_delay_ms, "Casting spell...", true);
+        // Show spinner for suspense
+        if self.config.use_spinners {
+            let pb = self.multi_progress.as_ref().unwrap().add(
+                ProgressBar::new_spinner()
+                    .with_style(
+                        ProgressStyle::default_spinner()
+                            .template("{spinner:.green} {msg}")
+                            .unwrap()
+                    )
+                    .with_message("Channeling healing energy...".to_string())
+            );
+            pb.enable_steady_tick(Duration::from_millis(100));
+            
+            let steps = ((self.config.base_delay_ms * 3/4) / 100) as u32; // 75% of base delay
+            for i in 0..steps {
+                pb.set_position(i as u64);
+                thread::sleep(Duration::from_millis(100));
+            }
+            
+            pb.finish_and_clear();
         } else {
-            thread::sleep(Duration::from_millis(300));
+            thread::sleep(Duration::from_millis(self.config.base_delay_ms));
         }
-        
-        print!("  ✨ ");
-        std::io::Write::flush(&mut std::io::stdout()).unwrap();
-        thread::sleep(Duration::from_millis(200));
-        
-        print!("{}", actor.bright_magenta().bold());
-        std::io::Write::flush(&mut std::io::stdout()).unwrap();
-        thread::sleep(Duration::from_millis(150));
-        
-        print!(" casts ");
-        std::io::Write::flush(&mut std::io::stdout()).unwrap();
-        thread::sleep(Duration::from_millis(150));
-        
-        print!("{}", spell_name.bright_yellow().italic());
-        std::io::Write::flush(&mut std::io::stdout()).unwrap();
-        thread::sleep(Duration::from_millis(150));
-        
-        println!(" on {}", target.bright_red().bold());
+
+        // Now print the complete event instantly
+        println!("  💚 {} heals for {} HP", 
+            actor.bright_green().bold(),
+            amount.to_string().bright_green().bold()
+        );
     }
     
-    /// Display health bars with animation
+    /// Display spell casting event with spinner suspense (no streaming text)
+    fn display_spell_with_spinner(&self, actor: &str, target: &str, spell_name: &str) {
+        // Show spinner for suspense
+        if self.config.use_spinners {
+            let pb = self.multi_progress.as_ref().unwrap().add(
+                ProgressBar::new_spinner()
+                    .with_style(
+                        ProgressStyle::default_spinner()
+                            .template("{spinner:.magenta} {msg}")
+                            .unwrap()
+                    )
+                    .with_message("Casting spell...".to_string())
+            );
+            pb.enable_steady_tick(Duration::from_millis(100));
+            
+            let steps = ((self.config.spell_delay_ms * 3/4) / 100) as u32; // 75% of spell delay
+            for i in 0..steps {
+                pb.set_position(i as u64);
+                thread::sleep(Duration::from_millis(100));
+            }
+            
+            pb.finish_and_clear();
+        } else {
+            thread::sleep(Duration::from_millis(self.config.spell_delay_ms));
+        }
+
+        // Now print the complete event instantly
+        println!("  ✨ {} casts {} on {}", 
+            actor.bright_magenta().bold(),
+            spell_name.bright_yellow().italic(),
+            target.bright_red().bold()
+        );
+    }
+    
+    /// Display health bars (no streaming animation)
     fn display_health_bars_with_effect(&self, fighter1_hp: u32, fighter2_hp: u32) {
         println!();
         
-        if self.config.streaming_effect {
-            // Animate health bars appearing
-            print!("  ");
-            for i in 0..10 {
-                print!("{}", "█".repeat(i).bright_red());
-                std::io::Write::flush(&mut std::io::stdout()).unwrap();
-                thread::sleep(Duration::from_millis(30));
-                if i < 9 {
-                    print!("\r  ");
-                }
-            }
-            print!("\r");
-            std::io::Write::flush(&mut std::io::stdout()).unwrap();
+        // Simple delay for suspense, then show health bars instantly
+        if self.config.enable_delays {
+            thread::sleep(Duration::from_millis(200));
         }
         
         self.display_health_bars(fighter1_hp, fighter2_hp);
