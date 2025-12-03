@@ -136,6 +136,30 @@ impl Storage {
         self.pending_battles.clear();
     }
 
+    // Battle execution operations
+    pub fn find_pending_battle(&self, id: &str) -> Option<BattleRecord> {
+        self.pending_battles.iter().find(|b| b.id == id).cloned()
+    }
+
+    pub fn remove_pending_battle(&mut self, id: &str) -> Option<BattleRecord> {
+        if let Some(pos) = self.pending_battles.iter().position(|b| b.id == id) {
+            Some(self.pending_battles.remove(pos))
+        } else {
+            None
+        }
+    }
+
+    pub fn move_battle_to_complete(&mut self, mut battle: BattleRecord, events: Vec<BattleEvent>, winner: Option<String>) -> BattleRecord {
+        // Update the battle record with execution results
+        battle.events = events;
+        battle.winner = winner;
+        battle.is_completed = true;
+        
+        // Add to complete battles
+        self.complete_battles.push(battle.clone());
+        battle
+    }
+
     pub fn generate_battle_id(&self) -> String {
         use std::time::{SystemTime, UNIX_EPOCH};
         let timestamp = SystemTime::now()

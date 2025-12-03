@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 use dialoguer::Input;
 use rinha_de_neopets::neopets::{Neopet, NeopetDef, BehaviorDef, Spell};
 use rinha_de_neopets::storage::{Storage, BattleRecord};
+use rinha_de_neopets::display::{BattleDisplay, BattleDisplayConfig};
 
 #[derive(Parser)]
 #[command(name = "colosseum")]
@@ -52,8 +53,13 @@ enum BattleAction {
     Complete,
     /// List all pending battles
     Pending,
-    /// Watch a saved battle
-    Watch { id: String },
+    /// Start/execute a pending battle
+    Start {
+        id: String,
+        /// Display the battle live as it happens
+        #[arg(short, long)]
+        live: bool,
+    },
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -81,14 +87,70 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             BattleAction::Pending => {
                 list_pending_battles(&storage);
             }
-            BattleAction::Watch { id } => {
-                println!("Battle watching not implemented yet");
+            BattleAction::Start { id, live } => {
+                start_battle(&mut storage, &id, live)?
             }
         },
         Commands::Clean => {
             clean_all_data(&mut storage)?;
         }
     }
+
+    Ok(())
+}
+
+fn start_battle(
+    storage: &mut Storage,
+    battle_id: &str,
+    live_display: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Find the pending battle
+    let battle = storage.find_pending_battle(battle_id)
+        .ok_or_else(|| format!("Pending battle '{}' not found", battle_id))?;
+
+    // Get the fighters
+    let fighter1 = storage.get_fighter(&battle.fighter1_name)
+        .ok_or_else(|| format!("Fighter '{}' not found", battle.fighter1_name))?;
+    let fighter2 = storage.get_fighter(&battle.fighter2_name)
+        .ok_or_else(|| format!("Fighter '{}' not found", battle.fighter2_name))?;
+
+    println!("⚔️  Starting battle: {} vs {}\n", battle.fighter1_name, battle.fighter2_name);
+
+    // Run the battle
+    let events = rinha_de_neopets::battle::battle_loop(fighter1, fighter2, &mut rand::rng());
+
+    // Determine winner from events
+    let winner = events.iter().find_map(|e| {
+        if let rinha_de_neopets::battle::BattleEvent::BattleComplete { winner, .. } = e {
+            Some(winner.clone())
+        } else {
+            None
+        }
+    });
+
+    if live_display {
+        // Display the battle live
+        let config = rinha_de_neopets::display::BattleDisplayConfig::default();
+        let mut display = rinha_de_neopets::display::BattleDisplay::with_config(fighter1, fighter2, config);
+        display.display_battle_events(&events, Some((fighter1.health, fighter2.health)));
+        display.display_battle_summary(&events);
+    } else {
+        // Just show summary without live display
+        println!("✅ Battle completed!");
+        if let Some(ref winner_name) = winner {
+            println!("🏆 Winner: {}", winner_name);
+        } else {
+            println!("🤝 Battle ended in a tie or max turns reached");
+        }
+        println!("📊 Total events: {}", events.len());
+    }
+
+    // Move battle from pending to complete
+    storage.remove_pending_battle(battle_id);
+    storage.move_battle_to_complete(battle, events, winner.clone());
+    storage.save()?;
+
+    println!("\n✅ Battle moved to complete history with ID: {}", battle_id);
 
     Ok(())
 }
@@ -265,7 +327,7 @@ fn create_fighter_interactive(storage: &mut Storage) -> Result<(), Box<dyn std::
         .interact_text()?;
 
     let mut spell_chances = Vec::new();
-    for (i, spell) in spells.iter().enumerate() {
+    for (_i, spell) in spells.iter().enumerate() {
         let chance: f64 = Input::new()
             .with_prompt(format!("Chance for spell '{}' (0.0-1.0)", spell.name))
             .default(0.125)
@@ -333,9 +395,9 @@ fn create_battle(
     fighter2_name: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Validate fighters exist
-    let fighter1 = storage.get_fighter(fighter1_name)
+    let _fighter1 = storage.get_fighter(fighter1_name)
         .ok_or_else(|| format!("Fighter '{}' not found", fighter1_name))?;
-    let fighter2 = storage.get_fighter(fighter2_name)
+    let _fighter2 = storage.get_fighter(fighter2_name)
         .ok_or_else(|| format!("Fighter '{}' not found", fighter2_name))?;
 
     // Prevent self-battles

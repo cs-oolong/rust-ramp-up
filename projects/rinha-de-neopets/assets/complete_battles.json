@@ -1,1 +1,688 @@
-[]
+[
+  {
+    "id": "battle_1764730969489383863",
+    "fighter1_name": "Acara",
+    "fighter2_name": "Usul",
+    "created_at": "2025-12-03T03:02:49.489386443+00:00",
+    "events": [
+      {
+        "Roll": {
+          "turn": 0,
+          "actor": "Acara",
+          "dice": 12,
+          "final_value": 12,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "initiative"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 0,
+          "actor": "Usul",
+          "dice": 20,
+          "final_value": 20,
+          "is_positive_crit": true,
+          "is_negative_crit": false,
+          "goal": "initiative"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 1,
+          "actor": "Usul",
+          "dice": 14,
+          "final_value": 2,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "heal"
+        }
+      },
+      {
+        "Heal": {
+          "turn": 1,
+          "actor": "Usul",
+          "amount": 2
+        }
+      },
+      {
+        "HealthUpdate": {
+          "fighter_name": "Usul",
+          "from": 70,
+          "to": 70,
+          "turn": 1
+        }
+      },
+      {
+        "Roll": {
+          "turn": 2,
+          "actor": "Acara",
+          "dice": 5,
+          "final_value": 7,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "attack"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 2,
+          "actor": "Usul",
+          "dice": 3,
+          "final_value": 5,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "defense"
+        }
+      },
+      {
+        "Attack": {
+          "turn": 2,
+          "actor": "Acara",
+          "target": "Usul",
+          "raw_damage": 7,
+          "shield_value": 5,
+          "actual_damage": 2
+        }
+      },
+      {
+        "HealthUpdate": {
+          "fighter_name": "Usul",
+          "from": 70,
+          "to": 68,
+          "turn": 2
+        }
+      },
+      {
+        "Roll": {
+          "turn": 3,
+          "actor": "Usul",
+          "dice": 1,
+          "final_value": 8,
+          "is_positive_crit": false,
+          "is_negative_crit": true,
+          "goal": "attack"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 3,
+          "actor": "Acara",
+          "dice": 4,
+          "final_value": 14,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "defense"
+        }
+      },
+      {
+        "Attack": {
+          "turn": 3,
+          "actor": "Usul",
+          "target": "Acara",
+          "raw_damage": 8,
+          "shield_value": 14,
+          "actual_damage": 0
+        }
+      },
+      {
+        "Roll": {
+          "turn": 4,
+          "actor": "Acara",
+          "dice": 11,
+          "final_value": 13,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "attack"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 4,
+          "actor": "Usul",
+          "dice": 18,
+          "final_value": 20,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "defense"
+        }
+      },
+      {
+        "Attack": {
+          "turn": 4,
+          "actor": "Acara",
+          "target": "Usul",
+          "raw_damage": 13,
+          "shield_value": 20,
+          "actual_damage": 0
+        }
+      },
+      {
+        "Roll": {
+          "turn": 5,
+          "actor": "Usul",
+          "dice": 11,
+          "final_value": 18,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "attack"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 5,
+          "actor": "Acara",
+          "dice": 2,
+          "final_value": 12,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "defense"
+        }
+      },
+      {
+        "Attack": {
+          "turn": 5,
+          "actor": "Usul",
+          "target": "Acara",
+          "raw_damage": 18,
+          "shield_value": 12,
+          "actual_damage": 6
+        }
+      },
+      {
+        "HealthUpdate": {
+          "fighter_name": "Acara",
+          "from": 110,
+          "to": 104,
+          "turn": 5
+        }
+      },
+      {
+        "SpellCast": {
+          "turn": 6,
+          "actor": "Acara",
+          "target": "Usul",
+          "spell_name": "Blizzaga"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 7,
+          "actor": "Usul",
+          "dice": 4,
+          "final_value": 11,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "attack"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 7,
+          "actor": "Acara",
+          "dice": 11,
+          "final_value": 21,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "defense"
+        }
+      },
+      {
+        "Attack": {
+          "turn": 7,
+          "actor": "Usul",
+          "target": "Acara",
+          "raw_damage": 11,
+          "shield_value": 21,
+          "actual_damage": 0
+        }
+      },
+      {
+        "SpellCast": {
+          "turn": 8,
+          "actor": "Acara",
+          "target": "Usul",
+          "spell_name": "Fire Ball"
+        }
+      },
+      {
+        "SpellCast": {
+          "turn": 9,
+          "actor": "Usul",
+          "target": "Acara",
+          "spell_name": "It's Raining Men"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 10,
+          "actor": "Acara",
+          "dice": 9,
+          "final_value": 11,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "attack"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 10,
+          "actor": "Usul",
+          "dice": 17,
+          "final_value": 19,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "defense"
+        }
+      },
+      {
+        "Attack": {
+          "turn": 10,
+          "actor": "Acara",
+          "target": "Usul",
+          "raw_damage": 11,
+          "shield_value": 19,
+          "actual_damage": 0
+        }
+      },
+      {
+        "BattleComplete": {
+          "turn": 10,
+          "winner": "Acara",
+          "loser": "Usul",
+          "winner_final_hp": 104,
+          "loser_final_hp": 68,
+          "completion_reason": {
+            "MaxTurnsReached": 10
+          }
+        }
+      }
+    ],
+    "winner": "Acara",
+    "is_completed": true
+  },
+  {
+    "id": "battle_1764731016664797854",
+    "fighter1_name": "Xweetok",
+    "fighter2_name": "Usul",
+    "created_at": "2025-12-03T03:03:36.664797936+00:00",
+    "events": [
+      {
+        "Roll": {
+          "turn": 0,
+          "actor": "Xweetok",
+          "dice": 19,
+          "final_value": 19,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "initiative"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 0,
+          "actor": "Usul",
+          "dice": 10,
+          "final_value": 10,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "initiative"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 1,
+          "actor": "Xweetok",
+          "dice": 9,
+          "final_value": 14,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "attack"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 1,
+          "actor": "Usul",
+          "dice": 2,
+          "final_value": 4,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "defense"
+        }
+      },
+      {
+        "Attack": {
+          "turn": 1,
+          "actor": "Xweetok",
+          "target": "Usul",
+          "raw_damage": 14,
+          "shield_value": 4,
+          "actual_damage": 10
+        }
+      },
+      {
+        "HealthUpdate": {
+          "fighter_name": "Usul",
+          "from": 70,
+          "to": 60,
+          "turn": 1
+        }
+      },
+      {
+        "Roll": {
+          "turn": 2,
+          "actor": "Usul",
+          "dice": 16,
+          "final_value": 23,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "attack"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 2,
+          "actor": "Xweetok",
+          "dice": 7,
+          "final_value": 10,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "defense"
+        }
+      },
+      {
+        "Attack": {
+          "turn": 2,
+          "actor": "Usul",
+          "target": "Xweetok",
+          "raw_damage": 23,
+          "shield_value": 10,
+          "actual_damage": 13
+        }
+      },
+      {
+        "HealthUpdate": {
+          "fighter_name": "Xweetok",
+          "from": 100,
+          "to": 87,
+          "turn": 2
+        }
+      },
+      {
+        "SpellCast": {
+          "turn": 3,
+          "actor": "Xweetok",
+          "target": "Usul",
+          "spell_name": "Quicksilver"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 4,
+          "actor": "Usul",
+          "dice": 11,
+          "final_value": 2,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "heal"
+        }
+      },
+      {
+        "Heal": {
+          "turn": 4,
+          "actor": "Usul",
+          "amount": 2
+        }
+      },
+      {
+        "HealthUpdate": {
+          "fighter_name": "Usul",
+          "from": 60,
+          "to": 62,
+          "turn": 4
+        }
+      },
+      {
+        "Roll": {
+          "turn": 5,
+          "actor": "Xweetok",
+          "dice": 16,
+          "final_value": 21,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "attack"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 5,
+          "actor": "Usul",
+          "dice": 7,
+          "final_value": 9,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "defense"
+        }
+      },
+      {
+        "Attack": {
+          "turn": 5,
+          "actor": "Xweetok",
+          "target": "Usul",
+          "raw_damage": 21,
+          "shield_value": 9,
+          "actual_damage": 12
+        }
+      },
+      {
+        "HealthUpdate": {
+          "fighter_name": "Usul",
+          "from": 62,
+          "to": 50,
+          "turn": 5
+        }
+      },
+      {
+        "Roll": {
+          "turn": 6,
+          "actor": "Usul",
+          "dice": 2,
+          "final_value": 9,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "attack"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 6,
+          "actor": "Xweetok",
+          "dice": 4,
+          "final_value": 7,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "defense"
+        }
+      },
+      {
+        "Attack": {
+          "turn": 6,
+          "actor": "Usul",
+          "target": "Xweetok",
+          "raw_damage": 9,
+          "shield_value": 7,
+          "actual_damage": 2
+        }
+      },
+      {
+        "HealthUpdate": {
+          "fighter_name": "Xweetok",
+          "from": 87,
+          "to": 85,
+          "turn": 6
+        }
+      },
+      {
+        "Roll": {
+          "turn": 7,
+          "actor": "Xweetok",
+          "dice": 13,
+          "final_value": 18,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "attack"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 7,
+          "actor": "Usul",
+          "dice": 1,
+          "final_value": 3,
+          "is_positive_crit": false,
+          "is_negative_crit": true,
+          "goal": "defense"
+        }
+      },
+      {
+        "Attack": {
+          "turn": 7,
+          "actor": "Xweetok",
+          "target": "Usul",
+          "raw_damage": 18,
+          "shield_value": 3,
+          "actual_damage": 15
+        }
+      },
+      {
+        "HealthUpdate": {
+          "fighter_name": "Usul",
+          "from": 50,
+          "to": 35,
+          "turn": 7
+        }
+      },
+      {
+        "Roll": {
+          "turn": 8,
+          "actor": "Usul",
+          "dice": 9,
+          "final_value": 16,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "attack"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 8,
+          "actor": "Xweetok",
+          "dice": 10,
+          "final_value": 13,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "defense"
+        }
+      },
+      {
+        "Attack": {
+          "turn": 8,
+          "actor": "Usul",
+          "target": "Xweetok",
+          "raw_damage": 16,
+          "shield_value": 13,
+          "actual_damage": 3
+        }
+      },
+      {
+        "HealthUpdate": {
+          "fighter_name": "Xweetok",
+          "from": 85,
+          "to": 82,
+          "turn": 8
+        }
+      },
+      {
+        "Roll": {
+          "turn": 9,
+          "actor": "Xweetok",
+          "dice": 10,
+          "final_value": 20,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "heal"
+        }
+      },
+      {
+        "Heal": {
+          "turn": 9,
+          "actor": "Xweetok",
+          "amount": 20
+        }
+      },
+      {
+        "HealthUpdate": {
+          "fighter_name": "Xweetok",
+          "from": 82,
+          "to": 100,
+          "turn": 9
+        }
+      },
+      {
+        "Roll": {
+          "turn": 10,
+          "actor": "Usul",
+          "dice": 14,
+          "final_value": 21,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "attack"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 10,
+          "actor": "Xweetok",
+          "dice": 2,
+          "final_value": 5,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "defense"
+        }
+      },
+      {
+        "Attack": {
+          "turn": 10,
+          "actor": "Usul",
+          "target": "Xweetok",
+          "raw_damage": 21,
+          "shield_value": 5,
+          "actual_damage": 16
+        }
+      },
+      {
+        "HealthUpdate": {
+          "fighter_name": "Xweetok",
+          "from": 100,
+          "to": 84,
+          "turn": 10
+        }
+      },
+      {
+        "BattleComplete": {
+          "turn": 10,
+          "winner": "Xweetok",
+          "loser": "Usul",
+          "winner_final_hp": 84,
+          "loser_final_hp": 35,
+          "completion_reason": {
+            "MaxTurnsReached": 10
+          }
+        }
+      }
+    ],
+    "winner": "Xweetok",
+    "is_completed": true
+  }
+]
