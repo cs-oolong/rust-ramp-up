@@ -8,9 +8,6 @@ cargo llvm-cov --html --open
 Today I implemented the battle events, the neopets and some functions.
 What is still missing:
 - Maybe split battle.rs, it's getting big, perhaps split RNG related stuff somewhere else.
-- Let the user pick which battle to watch.
-
-
 - The actual betting, odds, cash out, balance, profit etc. system.
 
 ## Features to be added

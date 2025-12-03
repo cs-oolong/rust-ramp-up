@@ -3,7 +3,7 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::fs::File;
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct Spell {
     pub name: String,
     pub effect: serde_json::Value,
@@ -22,7 +22,7 @@ pub struct BehaviorDef {
     pub heal_chance: f64,
 }
 
-#[derive(Debug, Serialize, PartialEq)]
+#[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(try_from = "BehaviorDef")]
 pub struct Behavior {
     pub attack_chance: f64,
@@ -77,7 +77,7 @@ pub struct NeopetDef {
     pub behavior: BehaviorDef,
 }
 
-#[derive(Debug, Serialize, PartialEq)]
+#[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(try_from = "NeopetDef")]
 pub struct Neopet {
     pub name: String,

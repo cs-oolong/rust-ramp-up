@@ -124,6 +124,410 @@ impl BattleState {
     }
 }
 
+#[cfg(test)]
+mod battle_state_tests {
+    use super::*;
+    use crate::neopets::{Neopet, Spell, Behavior};
+
+    // Helper function to create a test Neopet
+    fn create_test_neopet(name: &str) -> Neopet {
+        Neopet {
+            name: name.to_string(),
+            health: 100,
+            heal_delta: 10,
+            base_attack: 5,
+            base_defense: 3,
+            spells: vec![
+                Spell {
+                    name: "Fireball".to_string(),
+                    effect: serde_json::Value::Object(serde_json::Map::new()),
+                },
+            ],
+            behavior: Behavior {
+                attack_chance: 0.5,
+                spell_chances: vec![0.1],
+                heal_chance: 0.4,
+            },
+        }
+    }
+
+    #[test]
+    fn test_battle_state_new() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let battle_state = BattleState::new(&fighter1, &fighter2, 10);
+        
+        assert_eq!(battle_state.fighter1_name, "Fighter1");
+        assert_eq!(battle_state.fighter2_name, "Fighter2");
+        assert_eq!(battle_state.fighter1_hp, 100);
+        assert_eq!(battle_state.fighter2_hp, 100);
+        assert_eq!(battle_state.fighter1_max_hp, 100);
+        assert_eq!(battle_state.fighter2_max_hp, 100);
+        assert_eq!(battle_state.current_turn, 0);
+        assert_eq!(battle_state.max_turns, 10);
+        assert!(!battle_state.is_complete);
+        assert!(battle_state.completion_reason.is_none());
+    }
+
+    #[test]
+    fn test_apply_damage_normal() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut battle_state = BattleState::new(&fighter1, &fighter2, 10);
+        
+        let new_hp = battle_state.apply_damage("Fighter1", 20);
+        assert_eq!(new_hp, 80);
+        assert_eq!(battle_state.fighter1_hp, 80);
+        assert_eq!(battle_state.fighter2_hp, 100); // Unchanged
+    }
+
+    #[test]
+    fn test_apply_damage_hp_saturation() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut battle_state = BattleState::new(&fighter1, &fighter2, 10);
+        
+        // Apply damage that would reduce HP below 0
+        let new_hp = battle_state.apply_damage("Fighter1", 150);
+        assert_eq!(new_hp, 0);
+        assert_eq!(battle_state.fighter1_hp, 0);
+    }
+
+    #[test]
+    fn test_apply_damage_zero_damage() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut battle_state = BattleState::new(&fighter1, &fighter2, 10);
+        
+        let new_hp = battle_state.apply_damage("Fighter1", 0);
+        assert_eq!(new_hp, 100);
+        assert_eq!(battle_state.fighter1_hp, 100);
+    }
+
+    #[test]
+    #[should_panic(expected = "Unknown fighter")]
+    fn test_apply_damage_invalid_fighter() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut battle_state = BattleState::new(&fighter1, &fighter2, 10);
+        
+        battle_state.apply_damage("NonExistentFighter", 10);
+    }
+
+    #[test]
+    fn test_apply_healing_normal() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut battle_state = BattleState::new(&fighter1, &fighter2, 10);
+        
+        // First reduce HP
+        battle_state.apply_damage("Fighter1", 20);
+        assert_eq!(battle_state.fighter1_hp, 80);
+        
+        // Then heal
+        let new_hp = battle_state.apply_healing("Fighter1", 15);
+        assert_eq!(new_hp, 95);
+        assert_eq!(battle_state.fighter1_hp, 95);
+    }
+
+    #[test]
+    fn test_apply_healing_max_hp_limit() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut battle_state = BattleState::new(&fighter1, &fighter2, 10);
+        
+        // First reduce HP
+        battle_state.apply_damage("Fighter1", 20);
+        assert_eq!(battle_state.fighter1_hp, 80);
+        
+        // Then heal beyond max HP
+        let new_hp = battle_state.apply_healing("Fighter1", 50);
+        assert_eq!(new_hp, 100); // Should be capped at max
+        assert_eq!(battle_state.fighter1_hp, 100);
+    }
+
+    #[test]
+    fn test_apply_healing_from_full_hp() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut battle_state = BattleState::new(&fighter1, &fighter2, 10);
+        
+        // Try to heal from full HP
+        let new_hp = battle_state.apply_healing("Fighter1", 20);
+        assert_eq!(new_hp, 100); // Should stay at max
+        assert_eq!(battle_state.fighter1_hp, 100);
+    }
+
+    #[test]
+    fn test_apply_healing_zero_amount() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut battle_state = BattleState::new(&fighter1, &fighter2, 10);
+        
+        let new_hp = battle_state.apply_healing("Fighter1", 0);
+        assert_eq!(new_hp, 100);
+        assert_eq!(battle_state.fighter1_hp, 100);
+    }
+
+    #[test]
+    #[should_panic(expected = "Unknown fighter")]
+    fn test_apply_healing_invalid_fighter() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut battle_state = BattleState::new(&fighter1, &fighter2, 10);
+        
+        battle_state.apply_healing("NonExistentFighter", 10);
+    }
+
+    #[test]
+    fn test_check_battle_completion_not_complete() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut battle_state = BattleState::new(&fighter1, &fighter2, 10);
+        
+        let completion = battle_state.check_battle_completion();
+        assert!(completion.is_none());
+        assert!(!battle_state.is_complete);
+        assert!(battle_state.completion_reason.is_none());
+    }
+
+    #[test]
+    fn test_check_battle_completion_hp_depleted_fighter1() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut battle_state = BattleState::new(&fighter1, &fighter2, 10);
+        
+        // Deplete fighter1's HP
+        battle_state.apply_damage("Fighter1", 100);
+        
+        let completion = battle_state.check_battle_completion();
+        assert!(completion.is_some());
+        match completion.unwrap() {
+            BattleCompletionReason::HpDepleted(name) => assert_eq!(name, "Fighter1"),
+            _ => panic!("Expected HP depletion completion"),
+        }
+        assert!(battle_state.is_complete);
+        assert!(battle_state.completion_reason.is_some());
+    }
+
+    #[test]
+    fn test_check_battle_completion_hp_depleted_fighter2() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut battle_state = BattleState::new(&fighter1, &fighter2, 10);
+        
+        // Deplete fighter2's HP
+        battle_state.apply_damage("Fighter2", 100);
+        
+        let completion = battle_state.check_battle_completion();
+        assert!(completion.is_some());
+        match completion.unwrap() {
+            BattleCompletionReason::HpDepleted(name) => assert_eq!(name, "Fighter2"),
+            _ => panic!("Expected HP depletion completion"),
+        }
+        assert!(battle_state.is_complete);
+    }
+
+    #[test]
+    fn test_check_battle_completion_max_turns() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut battle_state = BattleState::new(&fighter1, &fighter2, 5);
+        
+        // Set current turn to max
+        battle_state.current_turn = 5;
+        
+        let completion = battle_state.check_battle_completion();
+        assert!(completion.is_some());
+        match completion.unwrap() {
+            BattleCompletionReason::MaxTurnsReached(turns) => assert_eq!(turns, 5),
+            _ => panic!("Expected max turns completion"),
+        }
+        assert!(battle_state.is_complete);
+    }
+
+    #[test]
+    fn test_check_battle_completion_already_complete() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut battle_state = BattleState::new(&fighter1, &fighter2, 10);
+        
+        // Mark as complete first
+        battle_state.is_complete = true;
+        battle_state.completion_reason = Some(BattleCompletionReason::HpDepleted("Fighter1".to_string()));
+        
+        // Check completion again
+        let completion = battle_state.check_battle_completion();
+        assert!(completion.is_some());
+        match completion.unwrap() {
+            BattleCompletionReason::HpDepleted(name) => assert_eq!(name, "Fighter1"),
+            _ => panic!("Expected cached completion reason"),
+        }
+    }
+
+    #[test]
+    fn test_get_winner_loser_not_complete() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let battle_state = BattleState::new(&fighter1, &fighter2, 10);
+        
+        let result = battle_state.get_winner_loser();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_get_winner_loser_by_hp() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut battle_state = BattleState::new(&fighter1, &fighter2, 10);
+        
+        // Set different HP values
+        battle_state.fighter1_hp = 50;
+        battle_state.fighter2_hp = 30;
+        battle_state.is_complete = true;
+        
+        let result = battle_state.get_winner_loser();
+        assert!(result.is_some());
+        let (winner, loser) = result.unwrap();
+        assert_eq!(winner, "Fighter1");
+        assert_eq!(loser, "Fighter2");
+    }
+
+    #[test]
+    fn test_get_winner_loser_fighter2_wins() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut battle_state = BattleState::new(&fighter1, &fighter2, 10);
+        
+        // Set different HP values
+        battle_state.fighter1_hp = 20;
+        battle_state.fighter2_hp = 60;
+        battle_state.is_complete = true;
+        
+        let result = battle_state.get_winner_loser();
+        assert!(result.is_some());
+        let (winner, loser) = result.unwrap();
+        assert_eq!(winner, "Fighter2");
+        assert_eq!(loser, "Fighter1");
+    }
+
+    #[test]
+    fn test_get_winner_loser_draw_by_max_hp_fighter1_higher() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut battle_state = BattleState::new(&fighter1, &fighter2, 10);
+        
+        // Set equal HP but different max HP
+        battle_state.fighter1_hp = 50;
+        battle_state.fighter2_hp = 50;
+        battle_state.fighter1_max_hp = 120;
+        battle_state.fighter2_max_hp = 100;
+        battle_state.is_complete = true;
+        
+        let result = battle_state.get_winner_loser();
+        assert!(result.is_some());
+        let (winner, loser) = result.unwrap();
+        assert_eq!(winner, "Fighter1"); // Higher max HP wins tie
+        assert_eq!(loser, "Fighter2");
+    }
+
+    #[test]
+    fn test_get_winner_loser_draw_by_max_hp_fighter2_higher() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut battle_state = BattleState::new(&fighter1, &fighter2, 10);
+        
+        // Set equal HP but different max HP
+        battle_state.fighter1_hp = 50;
+        battle_state.fighter2_hp = 50;
+        battle_state.fighter1_max_hp = 100;
+        battle_state.fighter2_max_hp = 150;
+        battle_state.is_complete = true;
+        
+        let result = battle_state.get_winner_loser();
+        assert!(result.is_some());
+        let (winner, loser) = result.unwrap();
+        assert_eq!(winner, "Fighter2"); // Higher max HP wins tie
+        assert_eq!(loser, "Fighter1");
+    }
+
+    #[test]
+    fn test_get_winner_loser_draw_equal_max_hp() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut battle_state = BattleState::new(&fighter1, &fighter2, 10);
+        
+        // Set equal everything
+        battle_state.fighter1_hp = 50;
+        battle_state.fighter2_hp = 50;
+        battle_state.fighter1_max_hp = 100;
+        battle_state.fighter2_max_hp = 100;
+        battle_state.is_complete = true;
+        
+        let result = battle_state.get_winner_loser();
+        assert!(result.is_some());
+        let (winner, loser) = result.unwrap();
+        // When everything is equal, first fighter wins (implementation detail)
+        assert_eq!(winner, "Fighter1");
+        assert_eq!(loser, "Fighter2");
+    }
+
+    #[test]
+    fn test_get_hp() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut battle_state = BattleState::new(&fighter1, &fighter2, 10);
+        
+        // Modify HP
+        battle_state.apply_damage("Fighter1", 20);
+        battle_state.apply_damage("Fighter2", 30);
+        
+        assert_eq!(battle_state.get_hp("Fighter1"), 80);
+        assert_eq!(battle_state.get_hp("Fighter2"), 70);
+    }
+
+    #[test]
+    #[should_panic(expected = "Unknown fighter")]
+    fn test_get_hp_invalid_fighter() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let battle_state = BattleState::new(&fighter1, &fighter2, 10);
+        
+        battle_state.get_hp("NonExistentFighter");
+    }
+
+    // Integration test: Full battle state lifecycle
+    #[test]
+    fn test_battle_state_full_lifecycle() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut battle_state = BattleState::new(&fighter1, &fighter2, 5);
+        
+        // Simulate a battle
+        battle_state.current_turn = 1;
+        battle_state.apply_damage("Fighter1", 30); // Fighter1: 70 HP
+        battle_state.apply_damage("Fighter2", 20); // Fighter2: 80 HP
+        battle_state.apply_healing("Fighter1", 10); // Fighter1: 80 HP
+        
+        assert_eq!(battle_state.fighter1_hp, 80);
+        assert_eq!(battle_state.fighter2_hp, 80);
+        assert!(!battle_state.is_complete);
+        
+        // Deplete Fighter2's HP
+        battle_state.apply_damage("Fighter2", 100); // Fighter2: 0 HP
+        
+        let completion = battle_state.check_battle_completion();
+        assert!(completion.is_some());
+        assert!(battle_state.is_complete);
+        
+        let winner_loser = battle_state.get_winner_loser();
+        assert!(winner_loser.is_some());
+        let (winner, loser) = winner_loser.unwrap();
+        assert_eq!(winner, "Fighter1");
+        assert_eq!(loser, "Fighter2");
+    }
+}
+
 fn roll_d20<R: Rng>(rng: &mut R) -> u8 {
     rng.random_range(1..=20)
 }
@@ -575,6 +979,109 @@ pub fn battle_loop<R: Rng>(fighter1: &Neopet, fighter2: &Neopet, rng: &mut R) ->
     }
     
     all_events
+}
+
+#[cfg(test)]
+mod process_turn_with_state_tests {
+    use super::*;
+    use crate::neopets::{Neopet, Spell, Behavior};
+    use crate::battle::{BattleState, BattleEvent};
+    use rand::SeedableRng;
+    use rand::Rng;
+    
+    fn create_test_neopet(name: &str, health: u32, attack: u32, defense: u32) -> Neopet {
+        Neopet {
+            name: name.to_string(),
+            health,
+            base_attack: attack,
+            base_defense: defense,
+            heal_delta: 10,
+            spells: vec![],
+            behavior: Behavior {
+                attack_chance: 0.5,
+                spell_chances: vec![],
+                heal_chance: 0.3,
+            },
+        }
+    }
+    
+    fn create_seeded_rng() -> impl Rng {
+        rand::rngs::StdRng::seed_from_u64(42)
+    }
+    
+    #[test]
+    fn test_process_turn_with_state_attack_basic() {
+        let actor = create_test_neopet("Attacker", 100, 10, 5);
+        let target = create_test_neopet("Defender", 100, 5, 3);
+        let mut battle_state = BattleState::new(&actor, &target, 10);
+        let mut rng = create_seeded_rng();
+        
+        let events = process_turn_with_state(
+            "Attacker", "Defender",
+            &actor, &target,
+            &Action::Attack,
+            1, &mut battle_state, &mut rng
+        );
+        
+        assert!(!events.is_empty());
+        
+        let roll_events: Vec<_> = events.iter()
+            .filter(|e| matches!(e, BattleEvent::Roll { .. }))
+            .collect();
+        assert!(roll_events.len() >= 2);
+        
+        let attack_events: Vec<_> = events.iter()
+            .filter(|e| matches!(e, BattleEvent::Attack { .. }))
+            .collect();
+        assert!(!attack_events.is_empty());
+    }
+    
+    #[test]
+    fn test_process_turn_with_state_heal_basic() {
+        let actor = create_test_neopet("Healer", 80, 10, 5);
+        let target = create_test_neopet("Target", 100, 5, 3);
+        let mut battle_state = BattleState::new(&actor, &target, 10);
+        let mut rng = create_seeded_rng();
+        
+        battle_state.apply_damage("Healer", 30);
+        assert_eq!(battle_state.get_hp("Healer"), 50);
+        
+        let events = process_turn_with_state(
+            "Healer", "Target",
+            &actor, &target,
+            &Action::Heal,
+            1, &mut battle_state, &mut rng
+        );
+        
+        let heal_events: Vec<_> = events.iter()
+            .filter(|e| matches!(e, BattleEvent::Heal { .. }))
+            .collect();
+        assert!(!heal_events.is_empty());
+    }
+    
+    #[test]
+    fn test_process_turn_respects_turn_number() {
+        let actor = create_test_neopet("Fighter", 100, 10, 5);
+        let target = create_test_neopet("Target", 100, 5, 3);
+        let mut battle_state = BattleState::new(&actor, &target, 10);
+        let mut rng = create_seeded_rng();
+        
+        let events = process_turn_with_state(
+            "Fighter", "Target",
+            &actor, &target,
+            &Action::Attack,
+            7, &mut battle_state, &mut rng
+        );
+        
+        for event in &events {
+            match event {
+                BattleEvent::Roll { turn, .. } => assert_eq!(*turn, 7),
+                BattleEvent::Attack { turn, .. } => assert_eq!(*turn, 7),
+                BattleEvent::HealthUpdate { turn, .. } => assert_eq!(*turn, 7),
+                _ => {}
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1380,5 +1887,375 @@ mod process_turn_tests {
         // Spell should produce 1 event
         let spell_events = process_turn(&neopet1, &neopet2, &Action::CastSpell(0), 1, &mut rng);
         assert_eq!(spell_events.len(), 1);
+    }
+}
+
+#[cfg(test)]
+mod battle_integration_tests {
+    use super::*;
+    use crate::neopets::{Neopet, Spell, Behavior};
+    use rand::SeedableRng;
+    use rand::rngs::StdRng;
+
+    // Helper function to create a test Neopet
+    fn create_test_neopet(name: &str) -> Neopet {
+        Neopet {
+            name: name.to_string(),
+            health: 100,
+            heal_delta: 10,
+            base_attack: 5,
+            base_defense: 3,
+            spells: vec![
+                Spell {
+                    name: "Fireball".to_string(),
+                    effect: serde_json::Value::Object(serde_json::Map::new()),
+                },
+                Spell {
+                    name: "Ice Storm".to_string(),
+                    effect: serde_json::Value::Object(serde_json::Map::new()),
+                },
+            ],
+            behavior: Behavior {
+                attack_chance: 0.5,
+                spell_chances: vec![0.2, 0.1],
+                heal_chance: 0.2,
+            },
+        }
+    }
+
+    // Helper function to create a simple test Neopet with specific stats
+    fn create_simple_neopet(name: &str, health: u32, attack: u32, defense: u32) -> Neopet {
+        Neopet {
+            name: name.to_string(),
+            health,
+            heal_delta: 10,
+            base_attack: attack,
+            base_defense: defense,
+            spells: vec![],
+            behavior: Behavior {
+                attack_chance: 0.8,
+                spell_chances: vec![],
+                heal_chance: 0.2,
+            },
+        }
+    }
+
+    #[test]
+    fn test_battle_loop_completes() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut rng = StdRng::seed_from_u64(42); // Fixed seed for reproducibility
+        
+        let events = battle_loop(&fighter1, &fighter2, &mut rng);
+        
+        // Battle should complete and generate events
+        assert!(!events.is_empty());
+        
+        // Should have initiative events (turn 0)
+        let initiative_events: Vec<_> = events.iter().filter(|e| {
+            matches!(e, BattleEvent::Roll { turn: 0, .. })
+        }).collect();
+        assert!(!initiative_events.is_empty());
+        
+        // Should have battle events (turn > 0)
+        let battle_events: Vec<_> = events.iter().filter(|e| {
+            matches!(e, BattleEvent::Roll { turn, .. } if *turn > 0)
+        }).collect();
+        assert!(!battle_events.is_empty());
+        
+        // Should have a BattleComplete event
+        let complete_events: Vec<_> = events.iter().filter(|e| {
+            matches!(e, BattleEvent::BattleComplete { .. })
+        }).collect();
+        assert_eq!(complete_events.len(), 1);
+        
+        // Verify completion event structure
+        if let BattleEvent::BattleComplete { winner, loser, winner_final_hp, loser_final_hp, completion_reason, .. } = &complete_events[0] {
+            assert!(!winner.is_empty());
+            assert!(!loser.is_empty());
+            assert_ne!(winner, loser);
+            assert!(*winner_final_hp > 0 || *loser_final_hp > 0); // At least one should have HP
+            
+            // Verify completion reason
+            match completion_reason {
+                BattleCompletionReason::HpDepleted(_) => {
+                    // Valid - someone ran out of HP
+                },
+                BattleCompletionReason::MaxTurnsReached(max_turns) => {
+                    assert_eq!(*max_turns, 10); // Default max turns
+                },
+            }
+        }
+    }
+
+    #[test]
+    fn test_battle_loop_health_updates() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut rng = StdRng::seed_from_u64(123);
+        
+        let events = battle_loop(&fighter1, &fighter2, &mut rng);
+        
+        // Should have HealthUpdate events
+        let health_updates: Vec<_> = events.iter().filter(|e| {
+            matches!(e, BattleEvent::HealthUpdate { .. })
+        }).collect();
+        
+        // Should have at least one health update
+        assert!(!health_updates.is_empty());
+        
+        // Verify health update structure
+        for update in &health_updates {
+            if let BattleEvent::HealthUpdate { fighter_name, from, to, turn } = update {
+                assert!(!fighter_name.is_empty());
+                assert!(from != to); // Health should actually change
+                assert!(*turn > 0);
+                assert!(*from <= 100); // Should be within valid HP range
+                assert!(*to <= 100); // Should be within valid HP range
+            }
+        }
+    }
+
+    #[test]
+    fn test_battle_loop_attack_events() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut rng = StdRng::seed_from_u64(456);
+        
+        let events = battle_loop(&fighter1, &fighter2, &mut rng);
+        
+        // Should have Attack events
+        let attack_events: Vec<_> = events.iter().filter(|e| {
+            matches!(e, BattleEvent::Attack { .. })
+        }).collect();
+        
+        // Should have at least one attack
+        assert!(!attack_events.is_empty());
+        
+        // Verify attack event structure
+        for attack in &attack_events {
+            if let BattleEvent::Attack { turn, actor, target, raw_damage, shield_value, actual_damage } = attack {
+                assert!(*turn > 0);
+                assert!(!actor.is_empty());
+                assert!(!target.is_empty());
+                assert_ne!(actor, target);
+                assert!(*raw_damage > 0);
+                assert!(*shield_value >= 0);
+                assert!(*actual_damage <= *raw_damage); // Actual damage can't exceed raw damage
+            }
+        }
+    }
+
+    #[test]
+    fn test_battle_loop_heal_events() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut rng = StdRng::seed_from_u64(789);
+        
+        let events = battle_loop(&fighter1, &fighter2, &mut rng);
+        
+        // Should have Heal events
+        let heal_events: Vec<_> = events.iter().filter(|e| {
+            matches!(e, BattleEvent::Heal { .. })
+        }).collect();
+        
+        // Should have at least one heal (due to behavior probabilities)
+        assert!(!heal_events.is_empty());
+        
+        // Verify heal event structure
+        for heal in &heal_events {
+            if let BattleEvent::Heal { turn, actor, amount } = heal {
+                assert!(*turn > 0);
+                assert!(!actor.is_empty());
+                assert!(*amount >= 0); // Can be 0 due to negative crits
+                assert!(*amount <= 20); // Max heal is 10 * 2 (crit)
+            }
+        }
+    }
+
+    #[test]
+    fn test_battle_loop_spell_events() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut rng = StdRng::seed_from_u64(101112);
+        
+        let events = battle_loop(&fighter1, &fighter2, &mut rng);
+        
+        // Should have SpellCast events
+        let spell_events: Vec<_> = events.iter().filter(|e| {
+            matches!(e, BattleEvent::SpellCast { .. })
+        }).collect();
+        
+        // Should have at least one spell cast (due to behavior probabilities)
+        assert!(!spell_events.is_empty());
+        
+        // Verify spell cast event structure
+        for spell in &spell_events {
+            if let BattleEvent::SpellCast { turn, actor, target, spell_name } = spell {
+                assert!(*turn > 0);
+                assert!(!actor.is_empty());
+                assert!(!target.is_empty());
+                assert_ne!(actor, target);
+                assert!(!spell_name.is_empty());
+                // Should be one of the spells from the test neopets
+                assert!(spell_name == "Fireball" || spell_name == "Ice Storm" || spell_name == "Unknown Spell");
+            }
+        }
+    }
+
+    #[test]
+    fn test_battle_loop_roll_events() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        let mut rng = StdRng::seed_from_u64(131415);
+        
+        let events = battle_loop(&fighter1, &fighter2, &mut rng);
+        
+        // Should have Roll events
+        let roll_events: Vec<_> = events.iter().filter(|e| {
+            matches!(e, BattleEvent::Roll { .. })
+        }).collect();
+        
+        // Should have many roll events (initiative + battle rolls)
+        assert!(!roll_events.is_empty());
+        
+        // Verify roll event structure
+        for roll in &roll_events {
+            if let BattleEvent::Roll { turn, actor, dice, final_value, is_positive_crit, is_negative_crit, goal } = roll {
+                assert!(*turn >= 0);
+                assert!(!actor.is_empty());
+                assert!(*dice >= 1 && *dice <= 20);
+                assert!(*final_value > 0);
+                assert!(!goal.is_empty());
+                
+                // Crit flags should be mutually exclusive
+                assert!(!(*is_positive_crit && *is_negative_crit));
+                
+                // Check crit conditions
+                if *dice == 20 {
+                    assert!(*is_positive_crit);
+                    assert!(!*is_negative_crit);
+                } else if *dice == 1 {
+                    assert!(!*is_positive_crit);
+                    assert!(*is_negative_crit);
+                } else {
+                    assert!(!*is_positive_crit);
+                    assert!(!*is_negative_crit);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_battle_loop_quick_battle() {
+        // Create fighters with low HP to ensure quick battle
+        let fighter1 = create_simple_neopet("Quick1", 20, 10, 0);
+        let fighter2 = create_simple_neopet("Quick2", 20, 10, 0);
+        let mut rng = StdRng::seed_from_u64(161718);
+        
+        let events = battle_loop(&fighter1, &fighter2, &mut rng);
+        
+        // Should still complete
+        let complete_events: Vec<_> = events.iter().filter(|e| {
+            matches!(e, BattleEvent::BattleComplete { .. })
+        }).collect();
+        assert_eq!(complete_events.len(), 1);
+        
+        // Should have fewer total events due to quick battle
+        assert!(events.len() < 100); // Reasonable upper bound
+    }
+
+    #[test]
+    fn test_battle_loop_one_sided_battle() {
+        // Create a very one-sided battle
+        let fighter1 = create_simple_neopet("Strong", 100, 20, 10);  // High attack, good defense
+        let fighter2 = create_simple_neopet("Weak", 30, 2, 1);       // Low HP, low stats
+        let mut rng = StdRng::seed_from_u64(192021);
+        
+        let events = battle_loop(&fighter1, &fighter2, &mut rng);
+        
+        // Should complete
+        let complete_events: Vec<_> = events.iter().filter(|e| {
+            matches!(e, BattleEvent::BattleComplete { .. })
+        }).collect();
+        assert_eq!(complete_events.len(), 1);
+        
+        if let BattleEvent::BattleComplete { winner, loser, .. } = &complete_events[0] {
+            // Strong fighter should usually win in a one-sided battle
+            assert_eq!(winner, "Strong");
+            assert_eq!(loser, "Weak");
+        }
+    }
+
+    #[test]
+    fn test_battle_loop_heavy_defense_battle() {
+        // Create a battle with heavy defense
+        let fighter1 = create_simple_neopet("Tank1", 80, 5, 15);   // High defense
+        let fighter2 = create_simple_neopet("Tank2", 80, 5, 15);   // High defense
+        let mut rng = StdRng::seed_from_u64(222324);
+        
+        let events = battle_loop(&fighter1, &fighter2, &mut rng);
+        
+        // Should complete (likely by max turns due to low damage)
+        let complete_events: Vec<_> = events.iter().filter(|e| {
+            matches!(e, BattleEvent::BattleComplete { .. })
+        }).collect();
+        assert_eq!(complete_events.len(), 1);
+        
+        // Should have many attack events with low or zero damage
+        let attack_events: Vec<_> = events.iter().filter(|e| {
+            matches!(e, BattleEvent::Attack { actual_damage, .. } if *actual_damage == 0)
+        }).collect();
+        
+        // Due to high defense, should have some zero-damage attacks
+        assert!(!attack_events.is_empty());
+    }
+
+    #[test]
+    fn test_battle_loop_reproducible_with_seed() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        
+        // Same seed should produce same results
+        let mut rng1 = StdRng::seed_from_u64(252627);
+        let mut rng2 = StdRng::seed_from_u64(252627);
+        
+        let events1 = battle_loop(&fighter1, &fighter2, &mut rng1);
+        let events2 = battle_loop(&fighter1, &fighter2, &mut rng2);
+        
+        // Should have same number of events
+        assert_eq!(events1.len(), events2.len());
+        
+        // Events should be identical
+        for (i, (e1, e2)) in events1.iter().zip(events2.iter()).enumerate() {
+            assert_eq!(e1, e2, "Event {} should be identical", i);
+        }
+    }
+
+    #[test]
+    fn test_battle_loop_different_seeds_different_results() {
+        let fighter1 = create_test_neopet("Fighter1");
+        let fighter2 = create_test_neopet("Fighter2");
+        
+        // Different seeds should produce different results (with high probability)
+        let mut rng1 = StdRng::seed_from_u64(282930);
+        let mut rng2 = StdRng::seed_from_u64(313233);
+        
+        let events1 = battle_loop(&fighter1, &fighter2, &mut rng1);
+        let events2 = battle_loop(&fighter1, &fighter2, &mut rng2);
+        
+        // Very likely to have different results with different seeds
+        // (Though theoretically possible to be the same, extremely unlikely)
+        let same_winner = match (&events1.last(), &events2.last()) {
+            (Some(BattleEvent::BattleComplete { winner: w1, .. }), Some(BattleEvent::BattleComplete { winner: w2, .. })) => w1 == w2,
+            _ => false,
+        };
+        
+        // At least one of winner, length, or event sequence should differ
+        let different_length = events1.len() != events2.len();
+        let different_events = events1 != events2;
+        
+        assert!(different_length || different_events || !same_winner, 
+                "Different seeds should produce different results");
     }
 }
