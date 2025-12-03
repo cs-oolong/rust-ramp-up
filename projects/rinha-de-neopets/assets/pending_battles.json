@@ -1,0 +1,29 @@
+[
+  {
+    "id": "battle_1764728780",
+    "fighter1_name": "Xweetok",
+    "fighter2_name": "Usul",
+    "created_at": "2025-12-03T02:26:20.459991666+00:00",
+    "events": [],
+    "winner": null,
+    "is_completed": false
+  },
+  {
+    "id": "battle_1764728802",
+    "fighter1_name": "Xweetok",
+    "fighter2_name": "Acara",
+    "created_at": "2025-12-03T02:26:42.268956695+00:00",
+    "events": [],
+    "winner": null,
+    "is_completed": false
+  },
+  {
+    "id": "battle_1764728863",
+    "fighter1_name": "Vergil",
+    "fighter2_name": "Xweetok",
+    "created_at": "2025-12-03T02:27:43.789595756+00:00",
+    "events": [],
+    "winner": null,
+    "is_completed": false
+  }
+]

@@ -1,14 +1,15 @@
 use crate::neopets::Neopet;
 use rand::Rng;
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum BattleCompletionReason {
     HpDepleted(String), // Fighter name who reached 0 HP
     MaxTurnsReached(u32), // Maximum turns reached
 }
 
 /// Battle state that tracks HP and determines when battle ends
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BattleState {
     pub fighter1_name: String,
     pub fighter2_name: String,
@@ -134,7 +135,7 @@ enum Action {
     Heal,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum BattleEvent {
     Roll {
         turn: u32,

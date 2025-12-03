@@ -1,77 +1,90 @@
 [
-    {
-        "name": "Xweetok",
-        "health": 60,
-        "base_attack": 5,
-        "base_defense": 3,
-        "heal_delta": 20,
-        "spells":[
-            {
-                "name": "Judgement Cut",
-                "effect": {}
-            },
-            {
-                "name": "Quicksilver",
-                "effect": {}
-            }
-        ],
-        "behavior": {
-            "attack_chance": 0.50,
-            "spell_chances": [
-                0.10,
-                0.15
-            ],
-            "heal_chance": 0.25 
-        }
-    },
-    {
-        "name": "Acara",
-        "health": 60,
-        "heal_delta": 10,
-        "base_attack": 2,
-        "base_defense": 1,
-        "spells":[
-            {
-                "name": "Fire Ball",
-                "effect": {}
-            },
-            {
-                "name": "Blizzaga",
-                "effect": {}
-            }
-        ],
-        "behavior": {
-            "attack_chance": 0.50,
-            "spell_chances": [
-                0.10,
-                0.15
-            ],
-            "heal_chance": 0.25 
-        }
-    },
-    {
-        "name": "Usul",
-        "health": 70,
-        "heal_delta": 2,
-        "base_attack": 7,
-        "base_defense": 2,
-        "spells":[
-            {
-                "name": "Void Slash",
-                "effect": {}
-            },
-            {
-                "name": "It's Raining Men",
-                "effect": {}
-            }
-        ],
-        "behavior": {
-            "attack_chance": 0.50,
-            "spell_chances": [
-                0.10,
-                0.15
-            ],
-            "heal_chance": 0.25 
-        }
+  {
+    "name": "Xweetok",
+    "health": 60,
+    "heal_delta": 20,
+    "base_attack": 5,
+    "base_defense": 3,
+    "spells": [
+      {
+        "name": "Judgement Cut",
+        "effect": {}
+      },
+      {
+        "name": "Quicksilver",
+        "effect": {}
+      }
+    ],
+    "behavior": {
+      "attack_chance": 0.5,
+      "spell_chances": [
+        0.1,
+        0.15
+      ],
+      "heal_chance": 0.25
     }
+  },
+  {
+    "name": "Acara",
+    "health": 60,
+    "heal_delta": 10,
+    "base_attack": 2,
+    "base_defense": 1,
+    "spells": [
+      {
+        "name": "Fire Ball",
+        "effect": {}
+      },
+      {
+        "name": "Blizzaga",
+        "effect": {}
+      }
+    ],
+    "behavior": {
+      "attack_chance": 0.5,
+      "spell_chances": [
+        0.1,
+        0.15
+      ],
+      "heal_chance": 0.25
+    }
+  },
+  {
+    "name": "Usul",
+    "health": 70,
+    "heal_delta": 2,
+    "base_attack": 7,
+    "base_defense": 2,
+    "spells": [
+      {
+        "name": "Void Slash",
+        "effect": {}
+      },
+      {
+        "name": "It's Raining Men",
+        "effect": {}
+      }
+    ],
+    "behavior": {
+      "attack_chance": 0.5,
+      "spell_chances": [
+        0.1,
+        0.15
+      ],
+      "heal_chance": 0.25
+    }
+  },
+  {
+    "name": "Vergil",
+    "health": 100,
+    "heal_delta": 10,
+    "base_attack": 5,
+    "base_defense": 3,
+    "spells": [],
+    "behavior": {
+      "attack_chance": 0.5,
+      "spell_chances": [],
+      "heal_chance": 0.5
+    }
+  }
 ]
