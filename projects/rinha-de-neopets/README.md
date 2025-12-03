@@ -8,9 +8,6 @@ cargo llvm-cov --html --open
 Today I implemented the battle events, the neopets and some functions.
 What is still missing:
 - Maybe split battle.rs, it's getting big, perhaps split RNG related stuff somewhere else.
-- Actually change the state of the fighters. Update the HP when damage is taken, or when heal is applied.
-- Stop battle if a fighter reaches zero HP before the maximum number of turns.
-- Generate pairs of Neopets, so that we have a "live battles" list.
 - Let the user pick which battle to watch.
 
 

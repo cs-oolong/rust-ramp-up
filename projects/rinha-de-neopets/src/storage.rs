@@ -20,23 +20,23 @@ pub struct BattleRecord {
 
 pub struct Storage {
     neopets_path: String,
-    battles_path: String,
+    complete_battles_path: String,
     pending_battles_path: String,
     neopets: Vec<Neopet>,
-    battles: Vec<BattleRecord>,
+    complete_battles: Vec<BattleRecord>,
     pending_battles: Vec<BattleRecord>,
 }
 
 impl Storage {
-    pub fn new(neopets_path: &str, battles_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn new(neopets_path: &str, complete_battles_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let neopets = if Path::new(neopets_path).exists() {
             load_neopets(neopets_path)
         } else {
             Vec::new()
         };
         
-        let battles = if Path::new(battles_path).exists() {
-            let file = File::open(battles_path)?;
+        let complete_battles = if Path::new(complete_battles_path).exists() {
+            let file = File::open(complete_battles_path)?;
             let reader = BufReader::new(file);
             serde_json::from_reader(reader)?
         } else {
@@ -54,10 +54,10 @@ impl Storage {
 
         Ok(Self {
             neopets_path: neopets_path.to_string(),
-            battles_path: battles_path.to_string(),
+            complete_battles_path: complete_battles_path.to_string(),
             pending_battles_path: pending_battles_path.to_string(),
             neopets,
-            battles,
+            complete_battles,
             pending_battles,
         })
     }
@@ -68,10 +68,10 @@ impl Storage {
         let writer = BufWriter::new(neopets_file);
         serde_json::to_writer_pretty(writer, &self.neopets)?;
         
-        // Save battles
-        let battles_file = File::create(&self.battles_path)?;
-        let writer = BufWriter::new(battles_file);
-        serde_json::to_writer_pretty(writer, &self.battles)?;
+        // Save complete battles
+        let complete_battles_file = File::create(&self.complete_battles_path)?;
+        let writer = BufWriter::new(complete_battles_file);
+        serde_json::to_writer_pretty(writer, &self.complete_battles)?;
         
         // Save pending battles
         let pending_battles_file = File::create(&self.pending_battles_path)?;
@@ -99,25 +99,25 @@ impl Storage {
         self.neopets.iter().find(|n| n.name == name)
     }
 
-    // Battle operations
-    pub fn add_battle(&mut self, battle: BattleRecord) {
-        self.battles.push(battle);
+    // Complete battle operations
+    pub fn add_complete_battle(&mut self, battle: BattleRecord) {
+        self.complete_battles.push(battle);
     }
 
-    pub fn list_battles(&self) -> Vec<(String, String, String)> {
+    pub fn list_complete_battles(&self) -> Vec<(String, String, String)> {
         // Returns (id, fighter1 vs fighter2, status)
-        self.battles.iter().map(|b| {
+        self.complete_battles.iter().map(|b| {
             let status = if b.is_completed { "Completed" } else { "Pending" };
             (b.id.clone(), format!("{} vs {}", b.fighter1_name, b.fighter2_name), status.to_string())
         }).collect()
     }
 
-    pub fn get_battle(&mut self, id: &str) -> Option<&mut BattleRecord> {
-        self.battles.iter_mut().find(|b| b.id == id)
+    pub fn get_complete_battle(&mut self, id: &str) -> Option<&mut BattleRecord> {
+        self.complete_battles.iter_mut().find(|b| b.id == id)
     }
 
-    pub fn clear_battles(&mut self) {
-        self.battles.clear();
+    pub fn clear_complete_battles(&mut self) {
+        self.complete_battles.clear();
     }
 
     // Pending battle operations
@@ -141,7 +141,7 @@ impl Storage {
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
-            .as_secs();
+            .as_nanos();
         format!("battle_{}", timestamp)
     }
 }

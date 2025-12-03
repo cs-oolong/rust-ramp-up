@@ -1,7 +1,7 @@
 [
   {
     "name": "Xweetok",
-    "health": 60,
+    "health": 100,
     "heal_delta": 20,
     "base_attack": 5,
     "base_defense": 3,
@@ -26,10 +26,10 @@
   },
   {
     "name": "Acara",
-    "health": 60,
+    "health": 110,
     "heal_delta": 10,
     "base_attack": 2,
-    "base_defense": 1,
+    "base_defense": 10,
     "spells": [
       {
         "name": "Fire Ball",
@@ -72,19 +72,6 @@
         0.15
       ],
       "heal_chance": 0.25
-    }
-  },
-  {
-    "name": "Vergil",
-    "health": 100,
-    "heal_delta": 10,
-    "base_attack": 5,
-    "base_defense": 3,
-    "spells": [],
-    "behavior": {
-      "attack_chance": 0.5,
-      "spell_chances": [],
-      "heal_chance": 0.5
     }
   }
 ]
