@@ -1,6 +1,128 @@
 use crate::neopets::Neopet;
 use rand::Rng;
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum BattleCompletionReason {
+    HpDepleted(String), // Fighter name who reached 0 HP
+    MaxTurnsReached(u32), // Maximum turns reached
+}
+
+/// Battle state that tracks HP and determines when battle ends
+#[derive(Debug, Clone)]
+pub struct BattleState {
+    pub fighter1_name: String,
+    pub fighter2_name: String,
+    pub fighter1_hp: u32,
+    pub fighter2_hp: u32,
+    pub fighter1_max_hp: u32,
+    pub fighter2_max_hp: u32,
+    pub current_turn: u32,
+    pub max_turns: u32,
+    pub is_complete: bool,
+    pub completion_reason: Option<BattleCompletionReason>,
+}
+
+impl BattleState {
+    pub fn new(fighter1: &Neopet, fighter2: &Neopet, max_turns: u32) -> Self {
+        Self {
+            fighter1_name: fighter1.name.clone(),
+            fighter2_name: fighter2.name.clone(),
+            fighter1_hp: fighter1.health,
+            fighter2_hp: fighter2.health,
+            fighter1_max_hp: fighter1.health,
+            fighter2_max_hp: fighter2.health,
+            current_turn: 0,
+            max_turns,
+            is_complete: false,
+            completion_reason: None,
+        }
+    }
+    
+    /// Apply damage to a fighter and return the new HP
+    pub fn apply_damage(&mut self, fighter_name: &str, damage: u32) -> u32 {
+        if fighter_name == &self.fighter1_name {
+            self.fighter1_hp = self.fighter1_hp.saturating_sub(damage);
+            self.fighter1_hp
+        } else if fighter_name == &self.fighter2_name {
+            self.fighter2_hp = self.fighter2_hp.saturating_sub(damage);
+            self.fighter2_hp
+        } else {
+            panic!("Unknown fighter: {}", fighter_name);
+        }
+    }
+    
+    /// Apply healing to a fighter and return the new HP
+    pub fn apply_healing(&mut self, fighter_name: &str, amount: u32) -> u32 {
+        if fighter_name == &self.fighter1_name {
+            self.fighter1_hp = (self.fighter1_hp + amount).min(self.fighter1_max_hp);
+            self.fighter1_hp
+        } else if fighter_name == &self.fighter2_name {
+            self.fighter2_hp = (self.fighter2_hp + amount).min(self.fighter2_max_hp);
+            self.fighter2_hp
+        } else {
+            panic!("Unknown fighter: {}", fighter_name);
+        }
+    }
+    
+    /// Check if battle should end and set completion reason
+    pub fn check_battle_completion(&mut self) -> Option<BattleCompletionReason> {
+        if self.is_complete {
+            return self.completion_reason.clone();
+        }
+        
+        if self.fighter1_hp == 0 {
+            self.is_complete = true;
+            self.completion_reason = Some(BattleCompletionReason::HpDepleted(self.fighter1_name.clone()));
+            return self.completion_reason.clone();
+        }
+        
+        if self.fighter2_hp == 0 {
+            self.is_complete = true;
+            self.completion_reason = Some(BattleCompletionReason::HpDepleted(self.fighter2_name.clone()));
+            return self.completion_reason.clone();
+        }
+        
+        if self.current_turn >= self.max_turns {
+            self.is_complete = true;
+            self.completion_reason = Some(BattleCompletionReason::MaxTurnsReached(self.max_turns));
+            return self.completion_reason.clone();
+        }
+        
+        None
+    }
+    
+    /// Get the winner and loser (if battle is complete)
+    pub fn get_winner_loser(&self) -> Option<(String, String)> {
+        if !self.is_complete {
+            return None;
+        }
+        
+        if self.fighter1_hp > self.fighter2_hp {
+            Some((self.fighter1_name.clone(), self.fighter2_name.clone()))
+        } else if self.fighter2_hp > self.fighter1_hp {
+            Some((self.fighter2_name.clone(), self.fighter1_name.clone()))
+        } else {
+            // It's a draw - use max HP as tiebreaker, otherwise first fighter wins
+            if self.fighter1_max_hp >= self.fighter2_max_hp {
+                Some((self.fighter1_name.clone(), self.fighter2_name.clone()))
+            } else {
+                Some((self.fighter2_name.clone(), self.fighter1_name.clone()))
+            }
+        }
+    }
+    
+    /// Get current HP for a fighter
+    pub fn get_hp(&self, fighter_name: &str) -> u32 {
+        if fighter_name == &self.fighter1_name {
+            self.fighter1_hp
+        } else if fighter_name == &self.fighter2_name {
+            self.fighter2_hp
+        } else {
+            panic!("Unknown fighter: {}", fighter_name);
+        }
+    }
+}
+
 fn roll_d20<R: Rng>(rng: &mut R) -> u8 {
     rng.random_range(1..=20)
 }
@@ -31,6 +153,12 @@ pub enum BattleEvent {
         shield_value: u32,
         actual_damage: u32, 
     },
+    HealthUpdate {
+        fighter_name: String,
+        from: u32,
+        to: u32,
+        turn: u32,
+    },
     Heal {
         turn: u32,
         actor: String,
@@ -41,9 +169,18 @@ pub enum BattleEvent {
         actor: String,
         target: String,
         spell_name: String,
+    },
+    BattleComplete {
+        turn: u32,
+        winner: String,
+        loser: String,
+        winner_final_hp: u32,
+        loser_final_hp: u32,
+        completion_reason: BattleCompletionReason,
     }
 }
 
+/// Original process_turn function (for backward compatibility with tests)
 fn process_turn<R: Rng>(actor: &Neopet, other: &Neopet, action: &Action, turn_number: u32, rng: &mut R) -> Vec<BattleEvent> {
     match action {
         Action::Attack => {
@@ -214,23 +351,226 @@ fn choose_action<R: Rng>(neopet: &Neopet, rng: &mut R) -> Action {
     }
 }
 
+/// Process a turn with HP tracking and HealthUpdate events
+fn process_turn_with_state<R: Rng>(
+    actor_name: &str,
+    target_name: &str,
+    actor_stats: &Neopet, // Contains attack/defense stats
+    target_stats: &Neopet, // Contains attack/defense stats
+    action: &Action,
+    turn_number: u32,
+    battle_state: &mut BattleState,
+    rng: &mut R,
+) -> Vec<BattleEvent> {
+    let mut events = Vec::new();
+    
+    // If battle is already complete, return empty events
+    if battle_state.is_complete {
+        return events;
+    }
+
+    battle_state.current_turn = turn_number;
+    
+    match action {
+        Action::Attack => {
+            // Roll for attack
+            let attack_roll = roll_d20(rng);
+            let attack_val = (attack_roll as u32) + actor_stats.base_attack;
+            let attack_is_positive_crit = attack_roll == 20;
+            let attack_is_negative_crit = attack_roll == 1;
+            
+            events.push(BattleEvent::Roll {
+                turn: turn_number,
+                actor: actor_name.to_string(),
+                dice: attack_roll,
+                final_value: attack_val,
+                is_positive_crit: attack_is_positive_crit,
+                is_negative_crit: attack_is_negative_crit,
+                goal: "attack".to_string(),
+            });
+            
+            // Roll for defense
+            let defense_roll = roll_d20(rng);
+            let defense_val = (defense_roll as u32) + target_stats.base_defense;
+            let defense_is_positive_crit = defense_roll == 20;
+            let defense_is_negative_crit = defense_roll == 1;
+            
+            events.push(BattleEvent::Roll {
+                turn: turn_number,
+                actor: target_name.to_string(),
+                dice: defense_roll,
+                final_value: defense_val,
+                is_positive_crit: defense_is_positive_crit,
+                is_negative_crit: defense_is_negative_crit,
+                goal: "defense".to_string(),
+            });
+            
+            // Calculate damage
+            let mut actual_damage = attack_val.saturating_sub(defense_val);
+            if attack_is_positive_crit {
+                actual_damage *= 2;
+            }
+            if attack_is_negative_crit {
+                actual_damage = 0;
+            }
+            
+            events.push(BattleEvent::Attack {
+                turn: turn_number,
+                actor: actor_name.to_string(),
+                target: target_name.to_string(),
+                raw_damage: attack_val,
+                shield_value: defense_val,
+                actual_damage,
+            });
+            
+            // Apply damage and generate HealthUpdate event
+            if actual_damage > 0 {
+                let old_hp = battle_state.get_hp(target_name);
+                let new_hp = battle_state.apply_damage(target_name, actual_damage);
+                
+                events.push(BattleEvent::HealthUpdate {
+                    fighter_name: target_name.to_string(),
+                    from: old_hp,
+                    to: new_hp,
+                    turn: turn_number,
+                });
+            }
+        }
+        
+        Action::Heal => {
+            let heal_roll = roll_d20(rng);
+            let is_positive_crit = heal_roll == 20;
+            let is_negative_crit = heal_roll == 1;
+            let mut heal_amount = actor_stats.heal_delta;
+            
+            if is_positive_crit {
+                heal_amount *= 2;
+            }
+            if is_negative_crit {
+                heal_amount = 0;
+            }
+            
+            events.push(BattleEvent::Roll {
+                turn: turn_number,
+                actor: actor_name.to_string(),
+                dice: heal_roll,
+                final_value: heal_amount,
+                is_positive_crit,
+                is_negative_crit,
+                goal: "heal".to_string(),
+            });
+            
+            events.push(BattleEvent::Heal {
+                turn: turn_number,
+                actor: actor_name.to_string(),
+                amount: heal_amount,
+            });
+            
+            // Apply healing and generate HealthUpdate event
+            if heal_amount > 0 {
+                let old_hp = battle_state.get_hp(actor_name);
+                let new_hp = battle_state.apply_healing(actor_name, heal_amount);
+                
+                events.push(BattleEvent::HealthUpdate {
+                    fighter_name: actor_name.to_string(),
+                    from: old_hp,
+                    to: new_hp,
+                    turn: turn_number,
+                });
+            }
+        }
+        
+        Action::CastSpell(spell_index) => {
+            let spell_name = if let Some(spell) = actor_stats.spells.get(*spell_index) {
+                spell.name.clone()
+            } else {
+                "Unknown Spell".to_string()
+            };
+            
+            events.push(BattleEvent::SpellCast {
+                turn: turn_number,
+                actor: actor_name.to_string(),
+                target: target_name.to_string(),
+                spell_name,
+            });
+        }
+    }
+    
+    events
+}
+
 pub fn battle_loop<R: Rng>(fighter1: &Neopet, fighter2: &Neopet, rng: &mut R) -> Vec<BattleEvent> {
     let (initiative_events, first, second) = roll_for_initiative(fighter1, fighter2, rng);
     
-    let max_turns = 20;
+    let max_turns = 10; // Very short for testing - will definitely complete
+    let mut battle_state = BattleState::new(fighter1, fighter2, max_turns);
     let mut all_events = initiative_events; // Start with initiative events
 
     let mut turn = 1; // Start battle turns at 1
-    while turn <= max_turns {
-        let first_action = choose_action(first, rng);
-        let events = process_turn(first, second, &first_action, turn, rng);
-        all_events.extend(events);
-        turn += 1;
-
-        let second_action = choose_action(second, rng);
-        let events = process_turn(second, first, &second_action, turn, rng);
-        all_events.extend(events);
-        turn += 1;
+    
+    while !battle_state.is_complete && turn <= max_turns {
+        // First fighter's turn
+        if !battle_state.is_complete {
+            let first_action = choose_action(first, rng);
+            let events = process_turn_with_state(
+                &first.name, 
+                &second.name, 
+                first, 
+                second, 
+                &first_action, 
+                turn, 
+                &mut battle_state, 
+                rng
+            );
+            all_events.extend(events);
+            
+            // Check if battle ended after first fighter's action
+            if battle_state.check_battle_completion().is_some() {
+                break;
+            }
+        }
+        
+        if !battle_state.is_complete && turn < max_turns {
+            turn += 1;
+            
+            // Second fighter's turn
+            let second_action = choose_action(second, rng);
+            let events = process_turn_with_state(
+                &second.name, 
+                &first.name, 
+                second, 
+                first, 
+                &second_action, 
+                turn, 
+                &mut battle_state, 
+                rng
+            );
+            all_events.extend(events);
+            
+            // Check if battle ended after second fighter's action
+            if battle_state.check_battle_completion().is_some() {
+                break;
+            }
+        }
+        
+        if !battle_state.is_complete {
+            turn += 1;
+        }
+    }
+    
+    // Generate BattleComplete event if battle ended
+    if let Some((winner, loser)) = battle_state.get_winner_loser() {
+        let winner_hp = battle_state.get_hp(&winner);
+        let loser_hp = battle_state.get_hp(&loser);
+        
+        all_events.push(BattleEvent::BattleComplete {
+            turn: battle_state.current_turn,
+            winner,
+            loser,
+            winner_final_hp: winner_hp,
+            loser_final_hp: loser_hp,
+            completion_reason: battle_state.completion_reason.unwrap(),
+        });
     }
     
     all_events

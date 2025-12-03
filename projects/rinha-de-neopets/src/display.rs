@@ -30,12 +30,14 @@ impl Default for BattleDisplayConfig {
     }
 }
 
-/// Purely presentational battle display with suspenseful animations
+/// Purely presentational battle display with suspenseful animations and HP tracking
 pub struct BattleDisplay {
     fighter1_name: String,
     fighter2_name: String,
     fighter1_max_health: u32,
     fighter2_max_health: u32,
+    fighter1_current_hp: u32,
+    fighter2_current_hp: u32,
     config: BattleDisplayConfig,
     multi_progress: Option<MultiProgress>,
 }
@@ -47,6 +49,8 @@ impl BattleDisplay {
             fighter2_name: fighter2.name.clone(),
             fighter1_max_health: fighter1.health,
             fighter2_max_health: fighter2.health,
+            fighter1_current_hp: fighter1.health,
+            fighter2_current_hp: fighter2.health,
             config: config.clone(),
             multi_progress: if config.use_spinners || config.streaming_effect {
                 Some(MultiProgress::new())
@@ -131,8 +135,68 @@ impl BattleDisplay {
         self.suspenseful_delay(500, "Fighters taking positions...", true);
     }
     
+    /// Update HP based on HealthUpdate events
+    pub fn update_hp(&mut self, fighter_name: &str, new_hp: u32) {
+        if fighter_name == &self.fighter1_name {
+            self.fighter1_current_hp = new_hp;
+        } else if fighter_name == &self.fighter2_name {
+            self.fighter2_current_hp = new_hp;
+        }
+    }
+    
+    /// Process a HealthUpdate event and update HP
+    fn process_health_update(&mut self, fighter_name: &str, from: u32, to: u32) {
+        let old_hp = if fighter_name == &self.fighter1_name {
+            self.fighter1_current_hp
+        } else {
+            self.fighter2_current_hp
+        };
+        
+        if old_hp != from {
+            // This shouldn't happen with proper event ordering, but handle gracefully
+            eprintln!("Warning: HP mismatch for {}. Expected: {}, got: {}", fighter_name, old_hp, from);
+        }
+        
+        self.update_hp(fighter_name, to);
+    }
+    
+    /// Display dramatic HP update with animation
+    fn display_hp_update_with_animation(&self, fighter_name: &str, from: u32, to: u32) {
+        let _max_hp = if fighter_name == &self.fighter1_name {
+            self.fighter1_max_health
+        } else {
+            self.fighter2_max_health
+        };
+        
+        let change = if to > from { "healed" } else { "damaged" };
+        let change_amount = (to as i32 - from as i32).abs() as u32;
+        
+        let fighter_colored = if fighter_name == &self.fighter1_name {
+            fighter_name.bright_cyan()
+        } else {
+            fighter_name.bright_red()
+        };
+        
+        let hp_color = if to > from {
+            "🟢".green()
+        } else if to < from.min(from.saturating_sub(from / 4)) {
+            "🔴".red()
+        } else {
+            "🟡".yellow()
+        };
+        
+        println!("     {} {} {} for {} HP ({} → {})", 
+            hp_color,
+            fighter_colored,
+            change.bright_white(),
+            change_amount.to_string().bright_yellow(),
+            from.to_string().bright_white(),
+            to.to_string().bright_yellow()
+        );
+    }
+    
     /// Display battle events with suspenseful animations and streaming effects
-    pub fn display_battle_events(&self, events: &[BattleEvent], health_state: Option<(u32, u32)>) {
+    pub fn display_battle_events(&mut self, events: &[BattleEvent], health_state: Option<(u32, u32)>) {
         if events.is_empty() {
             println!("{}", "No battle events to display.".dimmed());
             return;
@@ -149,6 +213,8 @@ impl BattleDisplay {
                 BattleEvent::Attack { turn, .. } => *turn,
                 BattleEvent::Heal { turn, .. } => *turn,
                 BattleEvent::SpellCast { turn, .. } => *turn,
+                BattleEvent::HealthUpdate { turn, .. } => *turn, // Health updates now have turns
+                BattleEvent::BattleComplete { turn, .. } => *turn,
             };
             events_by_turn.entry(turn).or_insert_with(Vec::new).push(event);
         }
@@ -193,15 +259,130 @@ impl BattleDisplay {
             if turn != 0 {
                 println!();
                 
+                // Show current HP status after each turn
+                self.display_turn_status(turn);
+                
                 // Dramatic pause between turns
-                if self.config.streaming_effect {
-                    self.suspenseful_delay(400, "Preparing next turn...", false);
+                if self.config.enable_delays {
+                    self.suspenseful_delay(600, "Preparing next turn...", true);
                 }
             }
         }
 
         // Display footer with animation
         self.animate_footer();
+    }
+    
+    /// Display current HP status at the end of a turn with style
+    fn display_turn_status(&self, turn: u32) {
+        if self.config.use_spinners {
+            // Show spinner for suspense before revealing status
+            let pb = self.multi_progress.as_ref().unwrap().add(
+                ProgressBar::new_spinner()
+                    .with_style(
+                        ProgressStyle::default_spinner()
+                            .template("{spinner:.cyan} {msg}")
+                            .unwrap()
+                    )
+                    .with_message("Updating battle status...".to_string())
+            );
+            pb.enable_steady_tick(Duration::from_millis(100));
+            
+            let steps = 6; // Show spinner for ~0.6 seconds
+            for i in 0..steps {
+                pb.set_position(i as u64);
+                thread::sleep(Duration::from_millis(100));
+            }
+            
+            pb.finish_and_clear();
+        } else {
+            // Simple delay for suspense
+            thread::sleep(Duration::from_millis(500));
+        }
+        
+        println!("\n{}", format!(" Turn {} Status ", turn).bright_blue().bold());
+        println!("{}", "─".repeat(50).bright_black());
+        
+        // Display health bars with animation
+        let percentage1 = if self.fighter1_max_health > 0 {
+            (self.fighter1_current_hp as f64 / self.fighter1_max_health as f64 * 100.0) as u32
+        } else { 0 };
+        
+        let percentage2 = if self.fighter2_max_health > 0 {
+            (self.fighter2_current_hp as f64 / self.fighter2_max_health as f64 * 100.0) as u32
+        } else { 0 };
+        
+        // Health bar colors based on percentage
+        let health_color1 = if percentage1 > 50 { "🟢".green() } else if percentage1 > 25 { "🟡".yellow() } else { "🔴".red() };
+        let health_color2 = if percentage2 > 50 { "🟢".green() } else if percentage2 > 25 { "🟡".yellow() } else { "🔴".red() };
+        
+        // Fighter name colors
+        let name1_colored = self.fighter1_name.bright_cyan().bold();
+        let name2_colored = self.fighter2_name.bright_red().bold();
+        
+        // Animate health bars filling up
+        if self.config.use_spinners {
+            // Animated health bar filling
+            let bar_width = 25;
+            for i in 0..=bar_width {
+                let filled1 = (bar_width as f64 * percentage1 as f64 / 100.0 * i as f64 / bar_width as f64) as usize;
+                let filled2 = (bar_width as f64 * percentage2 as f64 / 100.0 * i as f64 / bar_width as f64) as usize;
+                
+                let bar1 = "█".repeat(filled1) + &"░".repeat(bar_width - filled1);
+                let bar2 = "█".repeat(filled2) + &"░".repeat(bar_width - filled2);
+                
+                print!("\r  {} {}❤️  [{}] {}% ({})", 
+                    name1_colored,
+                    health_color1,
+                    bar1.bright_red(),
+                    percentage1.to_string().bright_yellow(),
+                    self.fighter1_current_hp.to_string().bright_white()
+                );
+                print!("  {} {}❤️  [{}] {}% ({})", 
+                    name2_colored,
+                    health_color2,
+                    bar2.bright_red(),
+                    percentage2.to_string().bright_yellow(),
+                    self.fighter2_current_hp.to_string().bright_white()
+                );
+                std::io::Write::flush(&mut std::io::stdout()).unwrap();
+                thread::sleep(Duration::from_millis(30));
+            }
+            println!(); // New line after animation
+        } else {
+            // Static health bars
+            let bar_width = 25;
+            let filled1 = (bar_width as f64 * percentage1 as f64 / 100.0) as usize;
+            let filled2 = (bar_width as f64 * percentage2 as f64 / 100.0) as usize;
+            
+            let bar1 = "█".repeat(filled1) + &"░".repeat(bar_width - filled1);
+            let bar2 = "█".repeat(filled2) + &"░".repeat(bar_width - filled2);
+            
+            println!("  {} {}❤️  [{}] {}% ({})", 
+                name1_colored,
+                health_color1,
+                bar1.bright_red(),
+                percentage1.to_string().bright_yellow(),
+                self.fighter1_current_hp.to_string().bright_white()
+            );
+            println!("  {} {}❤️  [{}] {}% ({})", 
+                name2_colored,
+                health_color2,
+                bar2.bright_red(),
+                percentage2.to_string().bright_yellow(),
+                self.fighter2_current_hp.to_string().bright_white()
+            );
+        }
+        
+        // Show any status effects or special conditions
+        if percentage1 < 25 {
+            println!("     {} {} is in critical condition!", "⚠️".bright_red(), self.fighter1_name.bright_cyan());
+        }
+        if percentage2 < 25 {
+            println!("     {} {} is in critical condition!", "⚠️".bright_red(), self.fighter2_name.bright_red());
+        }
+        
+        println!("{}", "─".repeat(50).bright_black());
     }
     
     /// Animate the battle header with spinner (no streaming text)
@@ -304,7 +485,7 @@ impl BattleDisplay {
     }
     
     /// Display a single event with spinner suspense (no streaming text)
-    fn display_event_with_spinner(&self, event: &BattleEvent, is_first: bool) {
+    fn display_event_with_spinner(&mut self, event: &BattleEvent, is_first: bool) {
         match event {
             BattleEvent::Roll { actor, dice, final_value, is_positive_crit, is_negative_crit, goal, .. } => {
                 self.display_roll_with_spinner(actor, *dice, *final_value, *is_positive_crit, *is_negative_crit, goal, is_first);
@@ -317,6 +498,13 @@ impl BattleDisplay {
             }
             BattleEvent::SpellCast { actor, target, spell_name, .. } => {
                 self.display_spell_with_spinner(actor, target, spell_name);
+            }
+            BattleEvent::HealthUpdate { fighter_name, from, to, .. } => {
+                // Process the health update and show the change
+                self.process_health_update(fighter_name, *from, *to);
+            }
+            BattleEvent::BattleComplete { turn, winner, loser, winner_final_hp, loser_final_hp, completion_reason } => {
+                self.display_battle_complete_with_spinner(*turn, winner, loser, *winner_final_hp, *loser_final_hp, completion_reason);
             }
         }
     }
@@ -540,6 +728,97 @@ impl BattleDisplay {
         println!();
     }
     
+    /// Display battle complete event with dramatic celebration
+    fn display_battle_complete_with_spinner(&self, turn: u32, winner: &str, loser: &str, winner_final_hp: u32, loser_final_hp: u32, completion_reason: &crate::battle::BattleCompletionReason) {
+        // Extended dramatic pause before the final announcement
+        if self.config.enable_delays {
+            self.suspenseful_delay(800, "BATTLE CONCLUDING...", true);
+            thread::sleep(Duration::from_millis(500));
+        }
+        
+        println!("\n{}", "🏆 BATTLE COMPLETE 🏆".bright_yellow().bold().center(70));
+        println!("{}", "═".repeat(70).bright_black());
+        
+        // Determine the celebration message based on completion reason
+        let (completion_title, completion_details) = match completion_reason {
+            crate::battle::BattleCompletionReason::HpDepleted(fighter_name) => {
+                if fighter_name == loser {
+                    ("🏅 VICTORY BY KNOCKOUT!".bright_green().bold(), 
+                     format!("{} has been defeated!", loser.bright_red().bold()))
+                } else {
+                    ("⚡ UPSET VICTORY!".bright_yellow().bold(),
+                     format!("{} made a miraculous comeback!", winner.bright_cyan().bold()))
+                }
+            }
+            crate::battle::BattleCompletionReason::MaxTurnsReached(max_turns) => {
+                ("⏰ TIME VICTORY!".bright_blue().bold(),
+                 format!("Maximum turns ({}) reached - winner by endurance!", max_turns.to_string().bright_white()))
+            }
+        };
+        
+        // Extended celebration with spinner
+        if self.config.use_spinners {
+            let pb = self.multi_progress.as_ref().unwrap().add(
+                ProgressBar::new_spinner()
+                    .with_style(
+                        ProgressStyle::default_spinner()
+                            .template("{spinner:.yellow} {msg}")
+                            .unwrap()
+                    )
+                    .with_message(completion_title.to_string())
+            );
+            pb.enable_steady_tick(Duration::from_millis(150));
+            
+            let steps = 10; // Longer celebration - ~1.5 seconds
+            for i in 0..steps {
+                pb.set_position(i as u64);
+                thread::sleep(Duration::from_millis(150));
+            }
+            
+            pb.finish_and_clear();
+        } else {
+            println!("\n{}", completion_title);
+            thread::sleep(Duration::from_millis(1000));
+        }
+        
+        // Display the final results
+        println!("\n{}", completion_details);
+        println!("\n{}", "Final Results:".bright_white().bold());
+        println!("{}", "─".repeat(50).bright_black());
+        
+        let winner_colored = winner.bright_green().bold();
+        let loser_colored = loser.bright_red().bold();
+        let turn_colored = turn.to_string().bright_yellow();
+        
+        println!("  🏆 Winner: {} ({} HP)", winner_colored, winner_final_hp.to_string().bright_green());
+        println!("  💀 Loser: {} ({} HP)", loser_colored, loser_final_hp.to_string().bright_red());
+        println!("  ⏱️  Total Turns: {}", turn_colored);
+        
+        // Special celebration based on how the battle ended
+        match completion_reason {
+            crate::battle::BattleCompletionReason::HpDepleted(_) => {
+                println!("  ⚔️  Battle Ended: Knockout Victory");
+                if winner_final_hp > 50 {
+                    println!("  💪 Decisive Victory - Winner still has plenty of fight left!");
+                } else if winner_final_hp > 20 {
+                    println!("  🔥 Close Victory - Winner fought hard for this win!");
+                } else {
+                    println!("  ⚡ Narrow Victory - Winner barely clung to victory!");
+                }
+            }
+            crate::battle::BattleCompletionReason::MaxTurnsReached(_) => {
+                println!("  ⏰ Battle Ended: Time Limit Reached");
+                if winner_final_hp > loser_final_hp + 20 {
+                    println!("  🎯 Dominant Performance - Clear superiority shown!");
+                } else {
+                    println!("  ⚖️  Close Contest - Both fighters showed great endurance!");
+                }
+            }
+        }
+        
+        println!("\n{}", "═".repeat(70).bright_black());
+    }
+    
     /// Display battle summary with dramatic effect
     pub fn display_battle_summary(&self, events: &[BattleEvent]) {
         if self.config.streaming_effect {
@@ -643,15 +922,7 @@ impl BattleDisplay {
     
     /// Display health bars
     pub fn display_health_bars(&self, fighter1_hp: u32, fighter2_hp: u32) {
-        let display = BattleDisplay {
-            fighter1_name: self.fighter1_name.clone(),
-            fighter2_name: self.fighter2_name.clone(),
-            fighter1_max_health: self.fighter1_max_health,
-            fighter2_max_health: self.fighter2_max_health,
-            config: BattleDisplayConfig::default(),
-            multi_progress: None,
-        };
-        display.display_health_bars_internal(fighter1_hp, fighter2_hp);
+        self.display_health_bars_internal(fighter1_hp, fighter2_hp);
     }
     
     fn display_health_bars_internal(&self, fighter1_hp: u32, fighter2_hp: u32) {
@@ -732,11 +1003,13 @@ mod tests {
 
     #[test]
     fn test_display_empty_events() {
-        let display = BattleDisplay {
+        let mut display = BattleDisplay {
             fighter1_name: "Fighter1".to_string(),
             fighter2_name: "Fighter2".to_string(),
             fighter1_max_health: 100,
             fighter2_max_health: 100,
+            fighter1_current_hp: 100,
+            fighter2_current_hp: 100,
             config: BattleDisplayConfig::default(),
             multi_progress: None,
         };
@@ -750,7 +1023,7 @@ mod tests {
         config.use_spinners = false;
         config.streaming_effect = false;
         
-        let display = BattleDisplay::with_config(
+        let mut display = BattleDisplay::with_config(
             &Neopet {
                 name: "Pikachu".to_string(),
                 health: 100,
@@ -865,7 +1138,7 @@ mod tests {
             },
         };
         
-        let display = BattleDisplay::with_config(&fighter1, &fighter2, config);
+        let mut display = BattleDisplay::with_config(&fighter1, &fighter2, config);
         let events = vec![BattleEvent::Heal {
             turn: 1,
             actor: "Fighter1".to_string(),

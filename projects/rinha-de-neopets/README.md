@@ -12,7 +12,20 @@ What is still missing:
 - Stop battle if a fighter reaches zero HP before the maximum number of turns.
 - Generate pairs of Neopets, so that we have a "live battles" list.
 - Let the user pick which battle to watch.
+
+
 - The actual betting, odds, cash out, balance, profit etc. system.
+
+## Features to be added
+- `main.rs` should become a CLI that allows the user to:
+    - Create a fighter interactively via command-line, leading the fighter to be registered at `assets/neopets.json` after proper validation.
+    - Create a battle by informing the names of the fighters and watch it happen live, or save it for later at `assets/battles.json`. Battles should have a unique ID/timestamp, to distinguish between two battles that are different but involve the same fighters.
+    - Create N random battles between the available fighters.
+    - List the names of all fighters.
+    - List fighter information verbosely - besides the name, also see the stats and spells.
+    - List the available battles.
+    - Trigger a battle so that it happens live.
+    - Place bets on a battle => complex, requires deriving betting system, architecture must be discussed!
 
 ## TODOs & Technical Debt
 

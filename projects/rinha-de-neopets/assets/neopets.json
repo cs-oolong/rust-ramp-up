@@ -1,7 +1,7 @@
 [
     {
         "name": "Xweetok",
-        "health": 100,
+        "health": 60,
         "base_attack": 5,
         "base_defense": 3,
         "heal_delta": 20,
@@ -26,10 +26,10 @@
     },
     {
         "name": "Acara",
-        "health": 110,
+        "health": 60,
         "heal_delta": 10,
         "base_attack": 2,
-        "base_defense": 10,
+        "base_defense": 1,
         "spells":[
             {
                 "name": "Fire Ball",
