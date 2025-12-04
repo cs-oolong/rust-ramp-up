@@ -1,16 +1,3 @@
-#[derive(Parser)]
-#[command(name = "colosseum")]
-#[command(about = "Neopets battle arena management CLI")]
-struct Cli {
-    #[command(subcommand)]
-    command: Commands,
-}
-
-#[derive(Subcommand)]
-enum Commands {
-    AddCash,
-}
-
 
 fn main() {
     println!("Hello from Cassino binary!");
