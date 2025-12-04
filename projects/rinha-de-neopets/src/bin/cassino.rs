@@ -1,10 +1,24 @@
+#[derive(Parser)]
+#[command(name = "colosseum")]
+#[command(about = "Neopets battle arena management CLI")]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    AddCash,
+}
+
+
 fn main() {
     println!("Hello from Cassino binary!");
 }
 
 // user can add cash (not real cash though) to their account
 // user can list available pending battles
-// user can create a simple bets
+// user can create a simple bet
     // has to provide the battle id
     // has to pick just one among the possible events
 // user can create a combined bet regarding a single battle, but multiple events within it
