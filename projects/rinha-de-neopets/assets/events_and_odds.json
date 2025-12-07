@@ -1,0 +1,20 @@
+{
+  "events": {
+    "event_4": {
+      "description": "vergil uses judgement cut 3 times",
+      "odd": 1.0
+    },
+    "event_2": {
+      "description": "pikachu wins against charizard",
+      "odd": 2.5
+    },
+    "event_3": {
+      "description": "acara rolls a critical 20",
+      "odd": 5.0
+    },
+    "event_1": {
+      "description": "Test Event - Player wins battle",
+      "odd": 2.5
+    }
+  }
+}
