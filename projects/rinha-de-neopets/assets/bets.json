@@ -29,6 +29,18 @@
       "amount": 25.0,
       "potential_win": 62.5,
       "timestamp": "2025-12-07T15:25:26.719735-03:00"
+    },
+    {
+      "event_id": "event_3",
+      "amount": 20.0,
+      "potential_win": 100.0,
+      "timestamp": "2025-12-07T15:30:51.477956-03:00"
+    },
+    {
+      "event_id": "event_2",
+      "amount": 2.0,
+      "potential_win": 5.0,
+      "timestamp": "2025-12-07T17:10:01.064414-03:00"
     }
   ]
 }

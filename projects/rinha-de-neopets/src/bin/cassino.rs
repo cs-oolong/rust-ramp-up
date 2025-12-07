@@ -4,6 +4,9 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 use std::collections::HashMap;
+use rinha_de_neopets::cassino_display::CassinoDisplay;
+use rinha_de_neopets::cassino::CassinoEvent;
+use colored::Colorize;
 
 #[derive(Parser)]
 #[command(name = "cassino")]
@@ -33,11 +36,7 @@ enum Commands {
 	},
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct CassinoEvent {
-    description: String,
-    odd: f64,
-}
+
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Bet {
@@ -137,18 +136,21 @@ fn save_accumulated_bets(accumulated_bets: &AccumulatedBets) {
     fs::write(path, json).expect("Failed to write accumulated bets to file");
 }
 
-fn place_bet(event_id: String, amount: f64) {
+fn place_bet_with_display(event_id: String, amount: f64, display: &CassinoDisplay) {
     // Validate that event_id is not empty
     if event_id.trim().is_empty() {
-        println!("Error: No event ID provided for bet!");
+        display.show_error("No event ID provided for bet!");
         return;
     }
     
     // Validate that amount is positive
     if amount <= 0.0 {
-        println!("Error: Bet amount must be greater than 0!");
+        display.show_error("Bet amount must be greater than 0!");
         return;
     }
+    
+    // Show loading animation
+    display.show_loading_animation("🔍 Verifying event...");
     
     // Load events to verify the event exists and get the odd
     let events_and_odds = load_events_and_odds();
@@ -156,6 +158,9 @@ fn place_bet(event_id: String, amount: f64) {
     if let Some(event) = events_and_odds.events.get(&event_id) {
         // Calculate potential win (amount * odd)
         let potential_win = amount * event.odd;
+        
+        // Show processing animation
+        display.show_loading_animation("💰 Processing bet...");
         
         // Create the bet
         let bet = Bet {
@@ -172,31 +177,28 @@ fn place_bet(event_id: String, amount: f64) {
         // Save bets
         save_bets(&bets);
         
-        println!("Bet placed successfully!");
-        println!("Event ID: {}", event_id);
-        println!("Event: {}", event.description);
-        println!("Bet amount: {:.2}", amount);
-        println!("Potential win: {:.2}", potential_win);
-        println!("Odd: {:.2}", event.odd);
+        // Display beautiful bet confirmation
+        display.show_bet_placement(&event_id, amount, potential_win, event.odd, false);
     } else {
-        println!("Error: Event '{}' not found!", event_id);
-        println!("Use 'cassino list-events' to see available events.");
+        display.show_error(&format!("Event '{}' not found! Use 'cassino list-events' to see available events.", event_id));
     }
 }
 
-fn place_accumulated_bet(event_ids: Vec<String>, amount: f64) {
+fn place_accumulated_bet_with_display(event_ids: Vec<String>, amount: f64, display: &CassinoDisplay) {
     // Validate that event_ids is not empty
     if event_ids.is_empty() {
-        println!("Error: No event IDs provided for accumulated bet!");
-        println!("Usage: cassino accumulated-bet --event-ids <EVENT_ID1> <EVENT_ID2> ... --amount <AMOUNT>");
+        display.show_error("No event IDs provided for accumulated bet!");
+        display.show_info("Usage: cassino accumulated-bet --event-ids <EVENT_ID1> <EVENT_ID2> ... --amount <AMOUNT>");
         return;
     }
     
     // Validate that amount is positive
     if amount <= 0.0 {
-        println!("Error: Bet amount must be greater than 0!");
+        display.show_error("Bet amount must be greater than 0!");
         return;
     }
+    
+    display.show_loading_animation("🔍 Verifying events...");
     
     // Load events to verify all events exist and calculate combined odds
     let events_and_odds = load_events_and_odds();
@@ -208,14 +210,15 @@ fn place_accumulated_bet(event_ids: Vec<String>, amount: f64) {
             combined_odds *= event.odd;
             valid_events.push((event_id.clone(), event.description.clone()));
         } else {
-            println!("Error: Event '{}' not found!", event_id);
-            println!("Use 'cassino list-events' to see available events.");
+            display.show_error(&format!("Event '{}' not found! Use 'cassino list-events' to see available events.", event_id));
             return;
         }
     }
     
     // Calculate potential win (amount * combined_odds)
     let potential_win = amount * combined_odds;
+    
+    display.show_loading_animation("🎯 Processing accumulated bet...");
     
     // Create the accumulated bet
     let accumulated_bet = AccumulatedBet {
@@ -233,31 +236,34 @@ fn place_accumulated_bet(event_ids: Vec<String>, amount: f64) {
     // Save accumulated bets
     save_accumulated_bets(&accumulated_bets);
     
-    println!("Accumulated bet placed successfully!");
-    println!("Event IDs: {:?}", event_ids);
-    println!("Combined odds: {:.2}", combined_odds);
-    println!("Bet amount: {:.2}", amount);
-    println!("Potential win: {:.2}", potential_win);
+    // Display beautiful accumulated bet confirmation
+    display.show_bet_placement(&format!("{:?}", event_ids), amount, potential_win, combined_odds, true);
     
-    println!("\nEvents in this bet:");
+    // Show individual events in the bet
+    println!("\n{}", "📋 Events in this accumulated bet:".yellow().bold());
     for (i, (event_id, description)) in valid_events.iter().enumerate() {
         let event = events_and_odds.events.get(event_id).unwrap();
-        println!("  {}. {} ({}): Odd {:.2}", i + 1, event_id, description, event.odd);
+        println!("  {}. {} ({}): Odd {:.2}", 
+            (i + 1).to_string().cyan(),
+            event_id.yellow(),
+            description.white(),
+            event.odd
+        );
     }
 }
 
-fn create_event_interactively() {
-    println!("Creating a new event...");
+fn create_event_interactively_with_display(display: &CassinoDisplay) {
+    display.show_event_creation();
     
-    // Get event description
+    // Get event description with styled prompt
     let description: String = Input::new()
-        .with_prompt("Enter event description")
+        .with_prompt("📝 Enter event description")
         .interact_text()
         .expect("Failed to read description");
     
-    // Get event odd
+    // Get event odd with validation
     let odd: f64 = Input::new()
-        .with_prompt("Enter event odd")
+        .with_prompt("🎲 Enter event odd (must be > 0)")
         .validate_with(|input: &f64| {
             if *input > 0.0 {
                 Ok(())
@@ -268,11 +274,14 @@ fn create_event_interactively() {
         .interact_text()
         .expect("Failed to read odd");
     
-    // Create and display the event
+    // Create the event
     let event = CassinoEvent {
         description: description.clone(),
         odd,
     };
+    
+    // Show loading animation while processing
+    display.show_loading_animation("💾 Saving event to database...");
     
     // Load existing events and odds
     let mut events_and_odds = load_events_and_odds();
@@ -286,49 +295,39 @@ fn create_event_interactively() {
     // Save to file
     save_events_and_odds(&events_and_odds);
     
-    println!("\nEvent created successfully!");
-    println!("Event ID: {}", event_id);
-    println!("Description: {}", event.description);
-    println!("Odd: {:.2}", event.odd);
+    // Show success animation
+    display.show_event_success(&event_id, &event.description, event.odd);
 }
 
-fn list_events() {
+fn list_events_with_display(display: &CassinoDisplay) {
+    display.show_loading_animation("📋 Loading available events...");
+    
     let events_and_odds = load_events_and_odds();
-    
-    if events_and_odds.events.is_empty() {
-        println!("No events available. Create some events first with 'cassino event'");
-        return;
-    }
-    
-    println!("Available Events:");
-    println!("==================");
-    
-    for (event_id, event) in &events_and_odds.events {
-        println!("Event ID: {}", event_id);
-        println!("Description: {}", event.description);
-        println!("Odd: {:.2}", event.odd);
-        println!("------------------");
-    }
+    display.show_events_list(&events_and_odds.events);
 }
 
 fn main() {
     let cli = Cli::parse();
+    let display = CassinoDisplay::new();
+    
+    // Show welcome banner
+    display.show_welcome_banner();
     
     match cli.command {
     	Commands::Event => {
-    		create_event_interactively();
+    		create_event_interactively_with_display(&display);
     	},
     	Commands::Cash => {
-    		println!("cash command called");
+    		display.show_info("💰 Cash management feature coming soon!");
     	},
     	Commands::Bet { event_id, amount } => {
-    		place_bet(event_id, amount);
+    		place_bet_with_display(event_id, amount, &display);
     	},
     	Commands::ListEvents => {
-    		list_events();
+    		list_events_with_display(&display);
     	},
     	Commands::AccumulatedBet { event_ids, amount } => {
-    		place_accumulated_bet(event_ids, amount);
+    		place_accumulated_bet_with_display(event_ids, amount, &display);
     	}
     }
 }
