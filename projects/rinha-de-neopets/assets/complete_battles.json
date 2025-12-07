@@ -684,5 +684,569 @@
     ],
     "winner": "Xweetok",
     "is_completed": true
+  },
+  {
+    "id": "battle_1764883750182018273",
+    "fighter1_name": "Acara",
+    "fighter2_name": "Xweetok",
+    "created_at": "2025-12-04T21:29:10.182019992+00:00",
+    "events": [
+      {
+        "Roll": {
+          "turn": 0,
+          "actor": "Acara",
+          "dice": 2,
+          "final_value": 2,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "initiative"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 0,
+          "actor": "Xweetok",
+          "dice": 13,
+          "final_value": 13,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "initiative"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 1,
+          "actor": "Xweetok",
+          "dice": 12,
+          "final_value": 20,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "heal"
+        }
+      },
+      {
+        "Heal": {
+          "turn": 1,
+          "actor": "Xweetok",
+          "amount": 20
+        }
+      },
+      {
+        "HealthUpdate": {
+          "fighter_name": "Xweetok",
+          "from": 100,
+          "to": 100,
+          "turn": 1
+        }
+      },
+      {
+        "SpellCast": {
+          "turn": 2,
+          "actor": "Acara",
+          "target": "Xweetok",
+          "spell_name": "Blizzaga"
+        }
+      },
+      {
+        "SpellCast": {
+          "turn": 3,
+          "actor": "Xweetok",
+          "target": "Acara",
+          "spell_name": "Quicksilver"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 4,
+          "actor": "Acara",
+          "dice": 13,
+          "final_value": 15,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "attack"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 4,
+          "actor": "Xweetok",
+          "dice": 1,
+          "final_value": 4,
+          "is_positive_crit": false,
+          "is_negative_crit": true,
+          "goal": "defense"
+        }
+      },
+      {
+        "Attack": {
+          "turn": 4,
+          "actor": "Acara",
+          "target": "Xweetok",
+          "raw_damage": 15,
+          "shield_value": 4,
+          "actual_damage": 11
+        }
+      },
+      {
+        "HealthUpdate": {
+          "fighter_name": "Xweetok",
+          "from": 100,
+          "to": 89,
+          "turn": 4
+        }
+      },
+      {
+        "Roll": {
+          "turn": 5,
+          "actor": "Xweetok",
+          "dice": 7,
+          "final_value": 12,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "attack"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 5,
+          "actor": "Acara",
+          "dice": 6,
+          "final_value": 16,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "defense"
+        }
+      },
+      {
+        "Attack": {
+          "turn": 5,
+          "actor": "Xweetok",
+          "target": "Acara",
+          "raw_damage": 12,
+          "shield_value": 16,
+          "actual_damage": 0
+        }
+      },
+      {
+        "Roll": {
+          "turn": 6,
+          "actor": "Acara",
+          "dice": 8,
+          "final_value": 10,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "attack"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 6,
+          "actor": "Xweetok",
+          "dice": 20,
+          "final_value": 23,
+          "is_positive_crit": true,
+          "is_negative_crit": false,
+          "goal": "defense"
+        }
+      },
+      {
+        "Attack": {
+          "turn": 6,
+          "actor": "Acara",
+          "target": "Xweetok",
+          "raw_damage": 10,
+          "shield_value": 23,
+          "actual_damage": 0
+        }
+      },
+      {
+        "Roll": {
+          "turn": 7,
+          "actor": "Xweetok",
+          "dice": 2,
+          "final_value": 20,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "heal"
+        }
+      },
+      {
+        "Heal": {
+          "turn": 7,
+          "actor": "Xweetok",
+          "amount": 20
+        }
+      },
+      {
+        "HealthUpdate": {
+          "fighter_name": "Xweetok",
+          "from": 89,
+          "to": 100,
+          "turn": 7
+        }
+      },
+      {
+        "Roll": {
+          "turn": 8,
+          "actor": "Acara",
+          "dice": 3,
+          "final_value": 10,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "heal"
+        }
+      },
+      {
+        "Heal": {
+          "turn": 8,
+          "actor": "Acara",
+          "amount": 10
+        }
+      },
+      {
+        "HealthUpdate": {
+          "fighter_name": "Acara",
+          "from": 110,
+          "to": 110,
+          "turn": 8
+        }
+      },
+      {
+        "Roll": {
+          "turn": 9,
+          "actor": "Xweetok",
+          "dice": 4,
+          "final_value": 20,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "heal"
+        }
+      },
+      {
+        "Heal": {
+          "turn": 9,
+          "actor": "Xweetok",
+          "amount": 20
+        }
+      },
+      {
+        "HealthUpdate": {
+          "fighter_name": "Xweetok",
+          "from": 100,
+          "to": 100,
+          "turn": 9
+        }
+      },
+      {
+        "Roll": {
+          "turn": 10,
+          "actor": "Acara",
+          "dice": 13,
+          "final_value": 10,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "heal"
+        }
+      },
+      {
+        "Heal": {
+          "turn": 10,
+          "actor": "Acara",
+          "amount": 10
+        }
+      },
+      {
+        "HealthUpdate": {
+          "fighter_name": "Acara",
+          "from": 110,
+          "to": 110,
+          "turn": 10
+        }
+      },
+      {
+        "BattleComplete": {
+          "turn": 10,
+          "winner": "Acara",
+          "loser": "Xweetok",
+          "winner_final_hp": 110,
+          "loser_final_hp": 100,
+          "completion_reason": {
+            "MaxTurnsReached": 10
+          }
+        }
+      }
+    ],
+    "winner": "Acara",
+    "is_completed": true
+  },
+  {
+    "id": "battle_1764883810166939761",
+    "fighter1_name": "Acara",
+    "fighter2_name": "Xweetok",
+    "created_at": "2025-12-04T21:30:10.166941688+00:00",
+    "events": [
+      {
+        "Roll": {
+          "turn": 0,
+          "actor": "Acara",
+          "dice": 4,
+          "final_value": 4,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "initiative"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 0,
+          "actor": "Xweetok",
+          "dice": 9,
+          "final_value": 9,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "initiative"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 1,
+          "actor": "Xweetok",
+          "dice": 14,
+          "final_value": 19,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "attack"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 1,
+          "actor": "Acara",
+          "dice": 8,
+          "final_value": 18,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "defense"
+        }
+      },
+      {
+        "Attack": {
+          "turn": 1,
+          "actor": "Xweetok",
+          "target": "Acara",
+          "raw_damage": 19,
+          "shield_value": 18,
+          "actual_damage": 1
+        }
+      },
+      {
+        "HealthUpdate": {
+          "fighter_name": "Acara",
+          "from": 110,
+          "to": 109,
+          "turn": 1
+        }
+      },
+      {
+        "Roll": {
+          "turn": 2,
+          "actor": "Acara",
+          "dice": 14,
+          "final_value": 16,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "attack"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 2,
+          "actor": "Xweetok",
+          "dice": 16,
+          "final_value": 19,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "defense"
+        }
+      },
+      {
+        "Attack": {
+          "turn": 2,
+          "actor": "Acara",
+          "target": "Xweetok",
+          "raw_damage": 16,
+          "shield_value": 19,
+          "actual_damage": 0
+        }
+      },
+      {
+        "SpellCast": {
+          "turn": 3,
+          "actor": "Xweetok",
+          "target": "Acara",
+          "spell_name": "Quicksilver"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 4,
+          "actor": "Acara",
+          "dice": 9,
+          "final_value": 11,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "attack"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 4,
+          "actor": "Xweetok",
+          "dice": 12,
+          "final_value": 15,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "defense"
+        }
+      },
+      {
+        "Attack": {
+          "turn": 4,
+          "actor": "Acara",
+          "target": "Xweetok",
+          "raw_damage": 11,
+          "shield_value": 15,
+          "actual_damage": 0
+        }
+      },
+      {
+        "Roll": {
+          "turn": 5,
+          "actor": "Xweetok",
+          "dice": 1,
+          "final_value": 6,
+          "is_positive_crit": false,
+          "is_negative_crit": true,
+          "goal": "attack"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 5,
+          "actor": "Acara",
+          "dice": 2,
+          "final_value": 12,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "defense"
+        }
+      },
+      {
+        "Attack": {
+          "turn": 5,
+          "actor": "Xweetok",
+          "target": "Acara",
+          "raw_damage": 6,
+          "shield_value": 12,
+          "actual_damage": 0
+        }
+      },
+      {
+        "Roll": {
+          "turn": 6,
+          "actor": "Acara",
+          "dice": 7,
+          "final_value": 10,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "heal"
+        }
+      },
+      {
+        "Heal": {
+          "turn": 6,
+          "actor": "Acara",
+          "amount": 10
+        }
+      },
+      {
+        "HealthUpdate": {
+          "fighter_name": "Acara",
+          "from": 109,
+          "to": 110,
+          "turn": 6
+        }
+      },
+      {
+        "SpellCast": {
+          "turn": 7,
+          "actor": "Xweetok",
+          "target": "Acara",
+          "spell_name": "Quicksilver"
+        }
+      },
+      {
+        "SpellCast": {
+          "turn": 8,
+          "actor": "Acara",
+          "target": "Xweetok",
+          "spell_name": "Blizzaga"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 9,
+          "actor": "Xweetok",
+          "dice": 3,
+          "final_value": 8,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "attack"
+        }
+      },
+      {
+        "Roll": {
+          "turn": 9,
+          "actor": "Acara",
+          "dice": 14,
+          "final_value": 24,
+          "is_positive_crit": false,
+          "is_negative_crit": false,
+          "goal": "defense"
+        }
+      },
+      {
+        "Attack": {
+          "turn": 9,
+          "actor": "Xweetok",
+          "target": "Acara",
+          "raw_damage": 8,
+          "shield_value": 24,
+          "actual_damage": 0
+        }
+      },
+      {
+        "SpellCast": {
+          "turn": 10,
+          "actor": "Acara",
+          "target": "Xweetok",
+          "spell_name": "Blizzaga"
+        }
+      },
+      {
+        "BattleComplete": {
+          "turn": 10,
+          "winner": "Acara",
+          "loser": "Xweetok",
+          "winner_final_hp": 110,
+          "loser_final_hp": 100,
+          "completion_reason": {
+            "MaxTurnsReached": 10
+          }
+        }
+      }
+    ],
+    "winner": "Acara",
+    "is_completed": true
   }
 ]

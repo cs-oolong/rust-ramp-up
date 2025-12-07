@@ -1,6 +1,32 @@
+use clap::{Parser, Subcommand};
+use dialoguer::Input;
+
+#[derive(Parser)]
+#[command(name = "cassino")]
+#[command(about = "Neopets battle arena bets management CLI")]
+
+struct Cli {
+	#[command(subcommand)]
+	command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+	Cash,
+	Bet,
+}
 
 fn main() {
-    println!("Hello from Cassino binary!");
+    let cli = Cli::parse();
+    
+    match cli.command {
+    	Commands::Cash => {
+    		println!("cash command called");
+    	},
+    	Commands::Bet => {
+    		println!("bet command called");
+    	}
+    }
 }
 
 // user can add cash (not real cash though) to their account
