@@ -1,0 +1,28 @@
+{
+  "bets": [
+    {
+      "event_id": "event_1",
+      "amount": 10.0,
+      "potential_win": 25.0,
+      "timestamp": "2025-12-07T15:13:39.016407-03:00"
+    },
+    {
+      "event_id": "event_3",
+      "amount": 15.0,
+      "potential_win": 75.0,
+      "timestamp": "2025-12-07T15:13:48.472241-03:00"
+    },
+    {
+      "event_id": "event_3",
+      "amount": 30.0,
+      "potential_win": 150.0,
+      "timestamp": "2025-12-07T15:15:37.752870-03:00"
+    },
+    {
+      "event_id": "event_1",
+      "amount": 10.0,
+      "potential_win": 25.0,
+      "timestamp": "2025-12-07T15:16:18.920818-03:00"
+    }
+  ]
+}
