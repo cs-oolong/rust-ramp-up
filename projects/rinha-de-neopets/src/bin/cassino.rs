@@ -5,7 +5,8 @@ use std::fs;
 use std::path::Path;
 use std::collections::HashMap;
 use rinha_de_neopets::cassino_display::CassinoDisplay;
-use rinha_de_neopets::cassino::CassinoEvent;
+use rinha_de_neopets::cassino::{CassinoEvent, CompletedEvent, ExpiredBet, ExpiredAccumulatedBet, DoneEvents, ExpiredBets};
+use rand;
 use colored::Colorize;
 
 #[derive(Parser)]
@@ -34,6 +35,11 @@ enum Commands {
 	    #[arg(short, long)]
 	    amount: f64,
 	},
+	RunEvent {
+	    #[arg(short, long)]
+	    event_id: String,
+	},
+	RunAllEvents,
 }
 
 
@@ -134,6 +140,50 @@ fn save_accumulated_bets(accumulated_bets: &AccumulatedBets) {
     let json = serde_json::to_string_pretty(accumulated_bets)
         .expect("Failed to serialize accumulated bets");
     fs::write(path, json).expect("Failed to write accumulated bets to file");
+}
+
+fn load_done_events() -> DoneEvents {
+    let path = "assets/done.json";
+    if Path::new(path).exists() {
+        match fs::read_to_string(path) {
+            Ok(content) => match serde_json::from_str(&content) {
+                Ok(done_events) => done_events,
+                Err(_) => DoneEvents::default(),
+            },
+            Err(_) => DoneEvents::default(),
+        }
+    } else {
+        DoneEvents::default()
+    }
+}
+
+fn save_done_events(done_events: &DoneEvents) {
+    let path = "assets/done.json";
+    let json = serde_json::to_string_pretty(done_events)
+        .expect("Failed to serialize done events");
+    fs::write(path, json).expect("Failed to write done events to file");
+}
+
+fn load_expired_bets() -> ExpiredBets {
+    let path = "assets/expired_bets.json";
+    if Path::new(path).exists() {
+        match fs::read_to_string(path) {
+            Ok(content) => match serde_json::from_str(&content) {
+                Ok(expired_bets) => expired_bets,
+                Err(_) => ExpiredBets::default(),
+            },
+            Err(_) => ExpiredBets::default(),
+        }
+    } else {
+        ExpiredBets::default()
+    }
+}
+
+fn save_expired_bets(expired_bets: &ExpiredBets) {
+    let path = "assets/expired_bets.json";
+    let json = serde_json::to_string_pretty(expired_bets)
+        .expect("Failed to serialize expired bets");
+    fs::write(path, json).expect("Failed to write expired bets to file");
 }
 
 fn place_bet_with_display(event_id: String, amount: f64, display: &CassinoDisplay) {
@@ -306,6 +356,268 @@ fn list_events_with_display(display: &CassinoDisplay) {
     display.show_events_list(&events_and_odds.events);
 }
 
+fn run_event_with_display(event_id: String, display: &CassinoDisplay) {
+    display.show_loading_animation(&format!("🎲 Running event {}...", event_id));
+    
+    // Load events and odds
+    let mut events_and_odds = load_events_and_odds();
+    
+    // Check if event exists
+    if let Some(event) = events_and_odds.events.get(&event_id).cloned() {
+        // Randomly determine if event occurred (50% chance)
+        let event_occurred = rand::random::<bool>();
+        
+        // Create completed event
+        let completed_event = CompletedEvent {
+            event_id: event_id.clone(),
+            description: event.description.clone(),
+            odd: event.odd,
+            result: event_occurred,
+            timestamp: chrono::Local::now().to_rfc3339(),
+        };
+        
+        // Remove event from active events
+        events_and_odds.events.remove(&event_id);
+        
+        // Load existing done events and add the new one
+        let mut done_events = load_done_events();
+        done_events.completed_events.push(completed_event.clone());
+        
+        // Process bets for this event
+        let mut bets = load_bets();
+        let mut expired_bets = load_expired_bets();
+        let mut total_spent = 0.0;
+        let mut total_earned = 0.0;
+        
+        // Process individual bets
+        let mut remaining_bets = Vec::new();
+        for bet in bets.bets {
+            if bet.event_id == event_id {
+                // This bet is for the event we're running
+                total_spent += bet.amount;
+                
+                let actual_payout = if event_occurred {
+                    bet.potential_win
+                } else {
+                    0.0
+                };
+                
+                total_earned += actual_payout;
+                
+                let expired_bet = ExpiredBet {
+                    event_id: bet.event_id,
+                    amount: bet.amount,
+                    potential_win: bet.potential_win,
+                    result: event_occurred,
+                    actual_payout,
+                    timestamp: bet.timestamp,
+                };
+                
+                expired_bets.expired_bets.push(expired_bet);
+            } else {
+                // Keep bets for other events
+                remaining_bets.push(bet);
+            }
+        }
+        bets.bets = remaining_bets;
+        
+        // Process accumulated bets
+        let mut accumulated_bets = load_accumulated_bets();
+        let mut remaining_accumulated_bets = Vec::new();
+        
+        for acc_bet in accumulated_bets.accumulated_bets {
+            if acc_bet.event_ids.contains(&event_id) {
+                // This accumulated bet contains the event we're running
+                total_spent += acc_bet.amount;
+                
+                // For accumulated bets, all events must occur for the bet to win
+                // Since we're only running one event at a time, we'll consider it a loss
+                // In a real system, you'd wait for all events to be run
+                let expired_acc_bet = ExpiredAccumulatedBet {
+                    event_ids: acc_bet.event_ids,
+                    amount: acc_bet.amount,
+                    combined_odds: acc_bet.combined_odds,
+                    potential_win: acc_bet.potential_win,
+                    all_events_occurred: false, // Simplified: assume loss when any event is run
+                    actual_payout: 0.0,
+                    timestamp: acc_bet.timestamp,
+                };
+                
+                expired_bets.expired_accumulated_bets.push(expired_acc_bet);
+                // Don't add to remaining since this bet is now expired
+            } else {
+                // Keep accumulated bets that don't contain this event
+                remaining_accumulated_bets.push(acc_bet);
+            }
+        }
+        accumulated_bets.accumulated_bets = remaining_accumulated_bets;
+        
+        // Save all changes
+        save_events_and_odds(&events_and_odds);
+        save_done_events(&done_events);
+        save_bets(&bets);
+        save_accumulated_bets(&accumulated_bets);
+        save_expired_bets(&expired_bets);
+        
+        // Display results
+        display.show_event_result(&event_id, &event.description, event_occurred, event.odd, total_spent, total_earned);
+        
+    } else {
+        display.show_error(&format!("Event '{}' not found!", event_id));
+    }
+}
+
+fn run_all_events_with_display(display: &CassinoDisplay) {
+    display.show_loading_animation("🎲 Running all events...");
+    
+    // Load all events
+    let events_and_odds = load_events_and_odds();
+    let event_ids: Vec<String> = events_and_odds.events.keys().cloned().collect();
+    
+    if event_ids.is_empty() {
+        display.show_info("No events to run!");
+        return;
+    }
+    
+    let mut total_spent = 0.0;
+    let mut total_earned = 0.0;
+    let mut results = Vec::new();
+    
+    // Run each event
+    for event_id in event_ids {
+        // Load fresh data for each event since previous events may have modified the state
+        let mut current_events = load_events_and_odds();
+        
+        if let Some(event) = current_events.events.get(&event_id).cloned() {
+            // Randomly determine if event occurred
+            let event_occurred = rand::random::<bool>();
+            
+            // Create completed event
+            let completed_event = CompletedEvent {
+                event_id: event_id.clone(),
+                description: event.description.clone(),
+                odd: event.odd,
+                result: event_occurred,
+                timestamp: chrono::Local::now().to_rfc3339(),
+            };
+            
+            // Remove event from active events
+            current_events.events.remove(&event_id);
+            
+            // Load existing done events and add the new one
+            let mut done_events = load_done_events();
+            done_events.completed_events.push(completed_event.clone());
+            
+            // Process bets for this event
+            let mut bets = load_bets();
+            let mut expired_bets = load_expired_bets();
+            
+            // Process individual bets
+            let mut remaining_bets = Vec::new();
+            for bet in bets.bets {
+                if bet.event_id == event_id {
+                    total_spent += bet.amount;
+                    
+                    let actual_payout = if event_occurred {
+                        bet.potential_win
+                    } else {
+                        0.0
+                    };
+                    
+                    total_earned += actual_payout;
+                    
+                    let expired_bet = ExpiredBet {
+                        event_id: bet.event_id,
+                        amount: bet.amount,
+                        potential_win: bet.potential_win,
+                        result: event_occurred,
+                        actual_payout,
+                        timestamp: bet.timestamp,
+                    };
+                    
+                    expired_bets.expired_bets.push(expired_bet);
+                } else {
+                    remaining_bets.push(bet);
+                }
+            }
+            bets.bets = remaining_bets;
+            
+            // For accumulated bets, we need to track which events have been processed
+            // and only mark them as expired when all their events have been run
+            // For now, let's just collect the results and process accumulated bets at the end
+            
+            results.push((event_id.clone(), event.description.clone(), event_occurred, event.odd));
+            
+            // Save changes for this event
+            save_events_and_odds(&current_events);
+            save_done_events(&done_events);
+            save_bets(&bets);
+            save_expired_bets(&expired_bets);
+        }
+    }
+    
+    // Now process accumulated bets
+    process_accumulated_bets_after_all_events(&mut total_spent, &mut total_earned);
+    
+    // Display summary
+    display.show_all_events_result(results, total_spent, total_earned);
+}
+
+fn process_accumulated_bets_after_all_events(total_spent: &mut f64, total_earned: &mut f64) {
+    let mut accumulated_bets = load_accumulated_bets();
+    let mut expired_bets = load_expired_bets();
+    let done_events = load_done_events();
+    
+    // Create a map of event results for quick lookup
+    let event_results: HashMap<String, bool> = done_events.completed_events
+        .iter()
+        .map(|e| (e.event_id.clone(), e.result))
+        .collect();
+    
+    let mut remaining_accumulated_bets = Vec::new();
+    
+    for acc_bet in accumulated_bets.accumulated_bets {
+        // Check if all events in this accumulated bet have been processed
+        let all_events_processed = acc_bet.event_ids.iter()
+            .all(|event_id| event_results.contains_key(event_id));
+        
+        if all_events_processed {
+            // All events have been processed, determine if bet won
+            *total_spent += acc_bet.amount;
+            
+            let all_events_occurred = acc_bet.event_ids.iter()
+                .all(|event_id| *event_results.get(event_id).unwrap_or(&false));
+            
+            let actual_payout = if all_events_occurred {
+                acc_bet.potential_win
+            } else {
+                0.0
+            };
+            
+            *total_earned += actual_payout;
+            
+            let expired_acc_bet = ExpiredAccumulatedBet {
+                event_ids: acc_bet.event_ids,
+                amount: acc_bet.amount,
+                combined_odds: acc_bet.combined_odds,
+                potential_win: acc_bet.potential_win,
+                all_events_occurred,
+                actual_payout,
+                timestamp: acc_bet.timestamp,
+            };
+            
+            expired_bets.expired_accumulated_bets.push(expired_acc_bet);
+        } else {
+            // Keep accumulated bet for later
+            remaining_accumulated_bets.push(acc_bet);
+        }
+    }
+    
+    accumulated_bets.accumulated_bets = remaining_accumulated_bets;
+    save_accumulated_bets(&accumulated_bets);
+    save_expired_bets(&expired_bets);
+}
+
 fn main() {
     let cli = Cli::parse();
     let display = CassinoDisplay::new();
@@ -328,6 +640,12 @@ fn main() {
     	},
     	Commands::AccumulatedBet { event_ids, amount } => {
     		place_accumulated_bet_with_display(event_ids, amount, &display);
+    	},
+    	Commands::RunEvent { event_id } => {
+    		run_event_with_display(event_id, &display);
+    	},
+    	Commands::RunAllEvents => {
+    		run_all_events_with_display(&display);
     	}
     }
 }

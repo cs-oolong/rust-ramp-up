@@ -1,0 +1,179 @@
+{
+  "expired_bets": [
+    {
+      "event_id": "event_1",
+      "amount": 10.0,
+      "potential_win": 25.0,
+      "result": false,
+      "actual_payout": 0.0,
+      "timestamp": "2025-12-07T15:13:39.016407-03:00"
+    },
+    {
+      "event_id": "event_1",
+      "amount": 10.0,
+      "potential_win": 25.0,
+      "result": false,
+      "actual_payout": 0.0,
+      "timestamp": "2025-12-07T15:16:18.920818-03:00"
+    },
+    {
+      "event_id": "event_1",
+      "amount": 25.0,
+      "potential_win": 62.5,
+      "result": false,
+      "actual_payout": 0.0,
+      "timestamp": "2025-12-07T15:25:26.719735-03:00"
+    },
+    {
+      "event_id": "event_2",
+      "amount": 2.0,
+      "potential_win": 5.0,
+      "result": true,
+      "actual_payout": 5.0,
+      "timestamp": "2025-12-07T17:10:01.064414-03:00"
+    },
+    {
+      "event_id": "event_3",
+      "amount": 15.0,
+      "potential_win": 75.0,
+      "result": false,
+      "actual_payout": 0.0,
+      "timestamp": "2025-12-07T15:13:48.472241-03:00"
+    },
+    {
+      "event_id": "event_3",
+      "amount": 30.0,
+      "potential_win": 150.0,
+      "result": false,
+      "actual_payout": 0.0,
+      "timestamp": "2025-12-07T15:15:37.752870-03:00"
+    },
+    {
+      "event_id": "event_3",
+      "amount": 20.0,
+      "potential_win": 100.0,
+      "result": false,
+      "actual_payout": 0.0,
+      "timestamp": "2025-12-07T15:30:51.477956-03:00"
+    },
+    {
+      "event_id": "event_1",
+      "amount": 10.0,
+      "potential_win": 25.0,
+      "result": false,
+      "actual_payout": 0.0,
+      "timestamp": "2025-12-07T20:54:54.580135-03:00"
+    }
+  ],
+  "expired_accumulated_bets": [
+    {
+      "event_ids": [
+        "event_1",
+        "event_3",
+        "event_4"
+      ],
+      "amount": 10.0,
+      "combined_odds": 12.5,
+      "potential_win": 125.0,
+      "all_events_occurred": false,
+      "actual_payout": 0.0,
+      "timestamp": "2025-12-07T15:20:29.760849-03:00"
+    },
+    {
+      "event_ids": [
+        "event_1",
+        "event_2",
+        "event_3"
+      ],
+      "amount": 20.0,
+      "combined_odds": 31.25,
+      "potential_win": 625.0,
+      "all_events_occurred": false,
+      "actual_payout": 0.0,
+      "timestamp": "2025-12-07T15:23:29.668753-03:00"
+    },
+    {
+      "event_ids": [
+        "event_1",
+        "event_3"
+      ],
+      "amount": 15.0,
+      "combined_odds": 12.5,
+      "potential_win": 187.5,
+      "all_events_occurred": false,
+      "actual_payout": 0.0,
+      "timestamp": "2025-12-07T15:25:14.055273-03:00"
+    },
+    {
+      "event_ids": [
+        "event_1",
+        "event_2",
+        "event_3"
+      ],
+      "amount": 20.0,
+      "combined_odds": 31.25,
+      "potential_win": 625.0,
+      "all_events_occurred": false,
+      "actual_payout": 0.0,
+      "timestamp": "2025-12-07T15:25:51.201576-03:00"
+    },
+    {
+      "event_ids": [
+        "event_1",
+        "event_2"
+      ],
+      "amount": 15.0,
+      "combined_odds": 6.25,
+      "potential_win": 93.75,
+      "all_events_occurred": false,
+      "actual_payout": 0.0,
+      "timestamp": "2025-12-07T15:31:02.023021-03:00"
+    },
+    {
+      "event_ids": [
+        "event_1",
+        "event_2",
+        "event_3"
+      ],
+      "amount": 25.0,
+      "combined_odds": 31.25,
+      "potential_win": 781.25,
+      "all_events_occurred": false,
+      "actual_payout": 0.0,
+      "timestamp": "2025-12-07T15:32:01.158395-03:00"
+    },
+    {
+      "event_ids": [
+        "event_1",
+        "event_2"
+      ],
+      "amount": 20.0,
+      "combined_odds": 6.25,
+      "potential_win": 125.0,
+      "all_events_occurred": false,
+      "actual_payout": 0.0,
+      "timestamp": "2025-12-07T17:11:02.633370-03:00"
+    },
+    {
+      "event_ids": [
+        "event_2",
+        "event_3"
+      ],
+      "amount": 20.0,
+      "combined_odds": 12.5,
+      "potential_win": 250.0,
+      "all_events_occurred": false,
+      "actual_payout": 0.0,
+      "timestamp": "2025-12-07T15:20:42.016720-03:00"
+    },
+    {
+      "event_ids": [],
+      "amount": 20.0,
+      "combined_odds": 1.0,
+      "potential_win": 20.0,
+      "all_events_occurred": true,
+      "actual_payout": 20.0,
+      "timestamp": "2025-12-07T15:22:10.824712-03:00"
+    }
+  ]
+}

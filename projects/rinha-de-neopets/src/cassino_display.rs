@@ -361,6 +361,107 @@ impl CassinoDisplay {
         
         println!("{}", message.color(self.config.color_theme.success));
     }
+    
+    /// Display event result after running
+    pub fn show_event_result(&self, event_id: &str, description: &str, result: bool, odd: f64, total_spent: f64, total_earned: f64) {
+        println!();
+        
+        let result_text = if result {
+            format!("✅ EVENT OCCURRED!").color(self.config.color_theme.success).bold()
+        } else {
+            format!("❌ EVENT DID NOT OCCUR").color(self.config.color_theme.error).bold()
+        };
+        
+        println!("{}", result_text);
+        
+        let result_card = format!(
+            "┌──────────────────────────────────────┐\n\
+             │ Event ID: {:<28} │\n\
+             │ Description: {:<25} │\n\
+             │ Odds: {:.2}x {:<23} │\n\
+             │ Result: {:<27} │\n\
+             └──────────────────────────────────────┘",
+            event_id, description, odd, "", if result { "OCCURRED" } else { "DID NOT OCCUR" }
+        );
+        
+        println!("{}", result_card.color(if result { self.config.color_theme.success } else { self.config.color_theme.error }));
+        
+        // Financial summary
+        println!();
+        println!("{}", "💰 FINANCIAL SUMMARY".color(self.config.color_theme.primary).bold());
+        
+        let profit = total_earned - total_spent;
+        let profit_color = if profit >= 0.0 { self.config.color_theme.success } else { self.config.color_theme.error };
+        
+        let summary_card = format!(
+            "┌──────────────────────────────────────┐\n\
+             │ Total Spent: ${:<21.2} │\n\
+             │ Total Earned: ${:<20.2} │\n\
+             │ Net Profit: ${:<22.2} │\n\
+             └──────────────────────────────────────┘",
+            total_spent, total_earned, profit
+        );
+        
+        println!("{}", summary_card.color(profit_color));
+        
+        if self.config.enable_delays {
+            thread::sleep(Duration::from_millis(500));
+        }
+    }
+    
+    /// Display result of running all events
+    pub fn show_all_events_result(&self, results: Vec<(String, String, bool, f64)>, total_spent: f64, total_earned: f64) {
+        println!();
+        println!("{}", "🎲 ALL EVENTS RESULTS 🎲".color(self.config.color_theme.primary).bold());
+        println!("{}", "═".repeat(60).color(self.config.color_theme.primary));
+        
+        let mut occurred_count = 0;
+        
+        for (event_id, description, result, odd) in &results {
+            let result_icon = if *result { "✅" } else { "❌" };
+            let result_color = if *result { self.config.color_theme.success } else { self.config.color_theme.error };
+            
+            if *result {
+                occurred_count += 1;
+            }
+            
+            let event_result = format!(
+                "{} Event {}: {} (Odds: {:.2}x) - {}",
+                result_icon, event_id, description, odd, if *result { "OCCURRED" } else { "DID NOT OCCUR" }
+            );
+            
+            println!("{}", event_result.color(result_color));
+            
+            if self.config.enable_delays {
+                thread::sleep(Duration::from_millis(100));
+            }
+        }
+        
+        println!("{}", "═".repeat(60).color(self.config.color_theme.primary));
+        println!("{}", format!("📊 Summary: {}/{} events occurred", occurred_count, results.len()).color(self.config.color_theme.info));
+        
+        // Financial summary
+        println!();
+        println!("{}", "💰 OVERALL FINANCIAL SUMMARY".color(self.config.color_theme.primary).bold());
+        
+        let profit = total_earned - total_spent;
+        let profit_color = if profit >= 0.0 { self.config.color_theme.success } else { self.config.color_theme.error };
+        
+        let summary_card = format!(
+            "┌──────────────────────────────────────┐\n\
+             │ Total Spent: ${:<21.2} │\n\
+             │ Total Earned: ${:<20.2} │\n\
+             │ Net Profit: ${:<22.2} │\n\
+             └──────────────────────────────────────┘",
+            total_spent, total_earned, profit
+        );
+        
+        println!("{}", summary_card.color(profit_color));
+        
+        if self.config.enable_delays {
+            thread::sleep(Duration::from_millis(500));
+        }
+    }
 }
 
 /// Helper function to center text

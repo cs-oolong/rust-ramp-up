@@ -1,0 +1,46 @@
+{
+  "completed_events": [
+    {
+      "event_id": "event_1",
+      "description": "Test Event - Player wins battle",
+      "odd": 2.5,
+      "result": false,
+      "timestamp": "2025-12-07T18:00:43.840311-03:00"
+    },
+    {
+      "event_id": "event_2",
+      "description": "pikachu wins against charizard",
+      "odd": 2.5,
+      "result": true,
+      "timestamp": "2025-12-07T18:00:58.038147-03:00"
+    },
+    {
+      "event_id": "event_5",
+      "description": "some random event just to test the display",
+      "odd": 2.5,
+      "result": true,
+      "timestamp": "2025-12-07T18:00:58.040236-03:00"
+    },
+    {
+      "event_id": "event_4",
+      "description": "vergil uses judgement cut 3 times",
+      "odd": 1.0,
+      "result": false,
+      "timestamp": "2025-12-07T18:00:58.041447-03:00"
+    },
+    {
+      "event_id": "event_3",
+      "description": "acara rolls a critical 20",
+      "odd": 5.0,
+      "result": false,
+      "timestamp": "2025-12-07T18:00:58.042731-03:00"
+    },
+    {
+      "event_id": "event_1",
+      "description": "vergil wins against dante",
+      "odd": 2.5,
+      "result": false,
+      "timestamp": "2025-12-07T20:55:17.450422-03:00"
+    }
+  ]
+}
