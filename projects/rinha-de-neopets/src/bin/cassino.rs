@@ -12,14 +12,56 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+	Event,
 	Cash,
 	Bet,
+}
+
+struct CassinoEvent {
+    description: String,
+    odd: f64,
+}
+
+fn create_event_interactively() {
+    println!("Creating a new event...");
+    
+    // Get event description
+    let description: String = Input::new()
+        .with_prompt("Enter event description")
+        .interact_text()
+        .expect("Failed to read description");
+    
+    // Get event odd
+    let odd: f64 = Input::new()
+        .with_prompt("Enter event odd")
+        .validate_with(|input: &f64| {
+            if *input > 0.0 {
+                Ok(())
+            } else {
+                Err("Odd must be greater than 0")
+            }
+        })
+        .interact_text()
+        .expect("Failed to read odd");
+    
+    // Create and display the event
+    let event = CassinoEvent {
+        description,
+        odd,
+    };
+    
+    println!("\nEvent created successfully!");
+    println!("Description: {}", event.description);
+    println!("Odd: {:.2}", event.odd);
 }
 
 fn main() {
     let cli = Cli::parse();
     
     match cli.command {
+    	Commands::Event => {
+    		create_event_interactively();
+    	},
     	Commands::Cash => {
     		println!("cash command called");
     	},
