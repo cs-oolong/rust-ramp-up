@@ -23,6 +23,12 @@
       "amount": 10.0,
       "potential_win": 25.0,
       "timestamp": "2025-12-07T15:16:18.920818-03:00"
+    },
+    {
+      "event_id": "event_1",
+      "amount": 25.0,
+      "potential_win": 62.5,
+      "timestamp": "2025-12-07T15:25:26.719735-03:00"
     }
   ]
 }

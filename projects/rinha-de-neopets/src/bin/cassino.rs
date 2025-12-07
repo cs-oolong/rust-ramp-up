@@ -25,6 +25,12 @@ enum Commands {
 	    amount: f64,
 	},
 	ListEvents,
+	AccumulatedBet {
+	    #[arg(short, long, num_args = 1..)]
+	    event_ids: Vec<String>,
+	    #[arg(short, long)]
+	    amount: f64,
+	},
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -41,6 +47,15 @@ struct Bet {
     timestamp: String,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct AccumulatedBet {
+    event_ids: Vec<String>,
+    amount: f64,
+    combined_odds: f64,
+    potential_win: f64,
+    timestamp: String,
+}
+
 #[derive(Serialize, Deserialize, Debug, Default)]
 struct EventsAndOdds {
     events: HashMap<String, CassinoEvent>,
@@ -49,6 +64,11 @@ struct EventsAndOdds {
 #[derive(Serialize, Deserialize, Debug, Default)]
 struct Bets {
     bets: Vec<Bet>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+struct AccumulatedBets {
+    accumulated_bets: Vec<AccumulatedBet>,
 }
 
 fn load_events_and_odds() -> EventsAndOdds {
@@ -95,7 +115,41 @@ fn save_bets(bets: &Bets) {
     fs::write(path, json).expect("Failed to write bets to file");
 }
 
+fn load_accumulated_bets() -> AccumulatedBets {
+    let path = "assets/accumulated_bets.json";
+    if Path::new(path).exists() {
+        match fs::read_to_string(path) {
+            Ok(content) => match serde_json::from_str(&content) {
+                Ok(accumulated_bets) => accumulated_bets,
+                Err(_) => AccumulatedBets::default(),
+            },
+            Err(_) => AccumulatedBets::default(),
+        }
+    } else {
+        AccumulatedBets::default()
+    }
+}
+
+fn save_accumulated_bets(accumulated_bets: &AccumulatedBets) {
+    let path = "assets/accumulated_bets.json";
+    let json = serde_json::to_string_pretty(accumulated_bets)
+        .expect("Failed to serialize accumulated bets");
+    fs::write(path, json).expect("Failed to write accumulated bets to file");
+}
+
 fn place_bet(event_id: String, amount: f64) {
+    // Validate that event_id is not empty
+    if event_id.trim().is_empty() {
+        println!("Error: No event ID provided for bet!");
+        return;
+    }
+    
+    // Validate that amount is positive
+    if amount <= 0.0 {
+        println!("Error: Bet amount must be greater than 0!");
+        return;
+    }
+    
     // Load events to verify the event exists and get the odd
     let events_and_odds = load_events_and_odds();
     
@@ -130,22 +184,65 @@ fn place_bet(event_id: String, amount: f64) {
     }
 }
 
-fn list_events() {
-    let events_and_odds = load_events_and_odds();
-    
-    if events_and_odds.events.is_empty() {
-        println!("No events available. Create some events first with 'cassino event'");
+fn place_accumulated_bet(event_ids: Vec<String>, amount: f64) {
+    // Validate that event_ids is not empty
+    if event_ids.is_empty() {
+        println!("Error: No event IDs provided for accumulated bet!");
+        println!("Usage: cassino accumulated-bet --event-ids <EVENT_ID1> <EVENT_ID2> ... --amount <AMOUNT>");
         return;
     }
     
-    println!("Available Events:");
-    println!("==================");
+    // Validate that amount is positive
+    if amount <= 0.0 {
+        println!("Error: Bet amount must be greater than 0!");
+        return;
+    }
     
-    for (event_id, event) in &events_and_odds.events {
-        println!("Event ID: {}", event_id);
-        println!("Description: {}", event.description);
-        println!("Odd: {:.2}", event.odd);
-        println!("------------------");
+    // Load events to verify all events exist and calculate combined odds
+    let events_and_odds = load_events_and_odds();
+    let mut combined_odds = 1.0;
+    let mut valid_events = Vec::new();
+    
+    for event_id in &event_ids {
+        if let Some(event) = events_and_odds.events.get(event_id) {
+            combined_odds *= event.odd;
+            valid_events.push((event_id.clone(), event.description.clone()));
+        } else {
+            println!("Error: Event '{}' not found!", event_id);
+            println!("Use 'cassino list-events' to see available events.");
+            return;
+        }
+    }
+    
+    // Calculate potential win (amount * combined_odds)
+    let potential_win = amount * combined_odds;
+    
+    // Create the accumulated bet
+    let accumulated_bet = AccumulatedBet {
+        event_ids: event_ids.clone(),
+        amount,
+        combined_odds,
+        potential_win,
+        timestamp: chrono::Local::now().to_rfc3339(),
+    };
+    
+    // Load existing accumulated bets and add the new one
+    let mut accumulated_bets = load_accumulated_bets();
+    accumulated_bets.accumulated_bets.push(accumulated_bet);
+    
+    // Save accumulated bets
+    save_accumulated_bets(&accumulated_bets);
+    
+    println!("Accumulated bet placed successfully!");
+    println!("Event IDs: {:?}", event_ids);
+    println!("Combined odds: {:.2}", combined_odds);
+    println!("Bet amount: {:.2}", amount);
+    println!("Potential win: {:.2}", potential_win);
+    
+    println!("\nEvents in this bet:");
+    for (i, (event_id, description)) in valid_events.iter().enumerate() {
+        let event = events_and_odds.events.get(event_id).unwrap();
+        println!("  {}. {} ({}): Odd {:.2}", i + 1, event_id, description, event.odd);
     }
 }
 
@@ -195,6 +292,25 @@ fn create_event_interactively() {
     println!("Odd: {:.2}", event.odd);
 }
 
+fn list_events() {
+    let events_and_odds = load_events_and_odds();
+    
+    if events_and_odds.events.is_empty() {
+        println!("No events available. Create some events first with 'cassino event'");
+        return;
+    }
+    
+    println!("Available Events:");
+    println!("==================");
+    
+    for (event_id, event) in &events_and_odds.events {
+        println!("Event ID: {}", event_id);
+        println!("Description: {}", event.description);
+        println!("Odd: {:.2}", event.odd);
+        println!("------------------");
+    }
+}
+
 fn main() {
     let cli = Cli::parse();
     
@@ -210,6 +326,9 @@ fn main() {
     	},
     	Commands::ListEvents => {
     		list_events();
+    	},
+    	Commands::AccumulatedBet { event_ids, amount } => {
+    		place_accumulated_bet(event_ids, amount);
     	}
     }
 }
