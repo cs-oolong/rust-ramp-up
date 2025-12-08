@@ -20,6 +20,13 @@ macro_rules! square {
     };
 }
 
+macro_rules! count_args {
+    () => { 0usize };
+    ( $( $item:expr ),* $(,)? ) => {
+        0usize $( + { let _ = $item; 1usize } )*
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -42,8 +49,26 @@ mod tests {
         assert_eq!(hardcoded_macro!(), 16);
     }
 
+    #[test]
     fn square_with_expressions() {
         assert_eq!(square!(1+2+3+4), 100);
         assert_eq!(square!(2*10), 400);
+    }
+
+    #[test]
+    fn empty() {
+        assert_eq!(count_args!(), 0);
+    }
+
+    #[test]
+    fn three_items() {
+        let a = 10;
+        let b = 5;
+        assert_eq!(count_args!(a, b, 1 + 2), 3);
+    }
+
+    #[test]
+    fn trailing_comma() {
+        assert_eq!(count_args!("x", "y",), 2);
     }
 }
