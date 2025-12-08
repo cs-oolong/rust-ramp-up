@@ -1,5 +1,5 @@
 [x] read book until chapter 4
-[ ] read about macros
+[x] read about macros
 [ ] read about tokio
     [ ] spawns
     [ ] joins
