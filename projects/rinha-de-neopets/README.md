@@ -3,6 +3,22 @@
 cargo llvm-cov --html --open
 ```
 
+```
+cargo run --bin colosseum
+```
+
+```
+cargo run --bin cassino
+```
+
+```
+cargo test
+```
+
+```
+cargo check
+```
+
 ## Checkpoint
 
 Today I implemented the battle events, the neopets and some functions.
