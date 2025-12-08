@@ -1,22 +1,28 @@
 ## Commands
-```
-cargo llvm-cov --html --open
-```
 
+Get the help & available commands:
 ```
 cargo run --bin colosseum
 ```
 
+Create some random battles:
+```
+cargo run --bin colosseum battle random 10
+```
+
+Pick a pending battle ID:
+```
+cargo run --bin colosseum battle pending
+```
+
+Watch a battle in the beautiful UI:
+```
+cargo run --bin colosseum battle start <battle ID goes here> --live
+```
+
+Still under development:
 ```
 cargo run --bin cassino
-```
-
-```
-cargo test
-```
-
-```
-cargo check
 ```
 
 ## Checkpoint

@@ -1,1 +1,74 @@
-[]
+[
+  {
+    "id": "battle_1765167634856775000",
+    "fighter1_name": "Acara",
+    "fighter2_name": "Xweetok",
+    "created_at": "2025-12-08T04:20:34.856788+00:00",
+    "events": [],
+    "winner": null,
+    "is_completed": false
+  },
+  {
+    "id": "battle_1765167634856803000",
+    "fighter1_name": "Xweetok",
+    "fighter2_name": "Acara",
+    "created_at": "2025-12-08T04:20:34.856804+00:00",
+    "events": [],
+    "winner": null,
+    "is_completed": false
+  },
+  {
+    "id": "battle_1765167634856807000",
+    "fighter1_name": "Acara",
+    "fighter2_name": "Usul",
+    "created_at": "2025-12-08T04:20:34.856807+00:00",
+    "events": [],
+    "winner": null,
+    "is_completed": false
+  },
+  {
+    "id": "battle_1765167634856810000",
+    "fighter1_name": "Acara",
+    "fighter2_name": "Usul",
+    "created_at": "2025-12-08T04:20:34.856810+00:00",
+    "events": [],
+    "winner": null,
+    "is_completed": false
+  },
+  {
+    "id": "battle_1765167634856812000",
+    "fighter1_name": "Usul",
+    "fighter2_name": "Xweetok",
+    "created_at": "2025-12-08T04:20:34.856812+00:00",
+    "events": [],
+    "winner": null,
+    "is_completed": false
+  },
+  {
+    "id": "battle_1765167634856819000",
+    "fighter1_name": "Xweetok",
+    "fighter2_name": "Acara",
+    "created_at": "2025-12-08T04:20:34.856820+00:00",
+    "events": [],
+    "winner": null,
+    "is_completed": false
+  },
+  {
+    "id": "battle_1765167634856822000",
+    "fighter1_name": "Usul",
+    "fighter2_name": "Acara",
+    "created_at": "2025-12-08T04:20:34.856823+00:00",
+    "events": [],
+    "winner": null,
+    "is_completed": false
+  },
+  {
+    "id": "battle_1765167634856825000",
+    "fighter1_name": "Xweetok",
+    "fighter2_name": "Usul",
+    "created_at": "2025-12-08T04:20:34.856825+00:00",
+    "events": [],
+    "winner": null,
+    "is_completed": false
+  }
+]
